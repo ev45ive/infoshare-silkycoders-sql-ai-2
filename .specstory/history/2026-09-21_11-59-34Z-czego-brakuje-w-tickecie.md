@@ -469,3 +469,188 @@ Use the current date and the ticket ID from the ticket filename/frontmatter. Do 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
 Utworzyłem prompt `.github/prompts/ticket-questions.prompt.md`. Wywołanie: `/ticket-questions` w chacie, podając ścieżkę/ID ticketu.
+
+---
+
+_**User (2026-09-21 12:30:49Z)**_
+
+/create-instructions ticket clarification - extract quality checklist from prompt into instruction - link instruction from prompt
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `agent-customization`: `instructions.md`
+
+**Input:**
+
+- endLine: `200`
+- filePath: `c:\Users\teamsharq\AppData\Local\Programs\Microsoft VS Code\7debcd0e2a\resources\app\extensions\copilot\assets\prompts\skills\agent-customization\references\instructions.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# [File-Specific Instructions (.instructions.md)](https://code.visualstudio.com/docs/copilot/customization/custom-instructions)
+
+Guidelines loaded on-demand when relevant to the current task, or explicitly when files match a pattern.
+
+## Locations
+
+| Path | Scope |
+|------|-------|
+| `.github/instructions/*.instructions.md` | Workspace |
+| `<profile>/instructions/*.instructions.md` | User profile |
+
+## Frontmatter
+
+```yaml
+---
+description: "<required>"    # For on-demand discovery—keyword-rich
+name: "Instruction Name"     # Optional, defaults to filename
+applyTo: "**/*.ts"           # Optional, auto-attach for matching files
+---
+```
+
+## Discovery Modes
+
+| Mode | Trigger | Use Case |
+|------|---------|----------|
+| **On-demand** (`description`) | Agent detects task relevance | Task-based: migrations, refactoring, API work |
+| **Explicit** (`applyTo`) | Files matching glob in context | File-based: language standards, framework rules |
+| **Manual** | `Add Context` → `Instructions` | Ad-hoc attachment |
+
+## Template
+
+```markdown
+---
+description: "Use when writing database migrations, schema changes, or data transformations. Covers safety checks and rollback patterns."
+---
+# Migration Guidelines
+
+- Always create reversible migrations
+- Test rollback before merging
+- Never drop columns in the same release as code removal
+```
+
+Note the "Use when..." pattern in the description—this helps on-demand discovery.
+
+## Explicit File Matching (optional)
+
+Use `applyTo` when the instruction applies to specific file types or folders:
+
+```yaml
+applyTo: "**"                           # ALWAYS included, no matter the file or description (use with caution)
+applyTo: "**/*.py"                      # All Python files
+applyTo: ["src/**", "lib/**"]           # Multiple patterns (OR)
+applyTo: src/**, lib/**                 # Multiple patterns without array syntax (OR)
+applyTo: "src/api/**/*.ts"              # Specific folder + extension
+```
+
+Applied when creating or modifying matching files, no
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `ticket-clarification.instructions.md`
+
+**Input:**
+
+- content:
+
+```
+---
+description: "Use when reviewing, triaging, or writing clarification questions for an incoming data/analytics ticket. Defines the checklist for what a well-formed ticket should contain before work starts."
+name: "Ticket Clarification Checklist"
+applyTo: "exercises/tickets/**"
+---
+# Ticket Quality Checklist
+
+A well-formed data/analytics ticket should specify:
+
+- **Metric/question definition** — the exact metric or question is unambiguous (no term with multiple definitions in the docs)
+- **Time period / as-of date** — the period or reference date the answer should cover
+- **Scope** — which entities are included/excluded (customers, stores, products, tiers, regions, etc.)
+- **Data source / expected report** — an existing report/view to reuse, or confirmation none exists
+- **Priority/deadline** — when the answer is needed
+- **Acceptance criteria** — how the requester will validate the answer is correct
+
+When a ticket is missing one or more of these, list the gap and raise it as an open question to the requester rather than guessing a default.
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\instructions\ticket-clarification.instructions.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\instructions\ticket-clarification.instructions.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **ticket-clarification.instructions.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+---
+description: "Use when reviewing, triaging, or writing clarification questions for an incoming data/analytics ticket. Defines the checklist for what a well-formed ticket should contain before work starts."
+name: "Ticket Clarification Checklist"
+applyTo: "exercises/tickets/**"
+---
+# Ticket Quality Checklist
+
+A well-formed data/analytics ticket should specify:
+
+- **Metric/question definition** — the exact metric or question is unambiguous (no term with multiple definitions in the docs)
+- **Time period / as-of date** — the period or reference date the answer should cover
+- **Scope** — which entities are included/excluded (customers, stores, products, tiers, regions, etc.)
+- **Data source / expected report** — an existing report/view to reuse, or confirmation none exists
+- **Priority/deadline** — when the answer is needed
+- **Acceptance criteria** — how the requester will validate the answer is correct
+
+When a ticket is missing one or more of these, list the gap and raise it as an open question to the requester rather than guessing a default.
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Teraz zaktualizuję prompt, żeby odsyłał do tej instrukcji zamiast duplikować checklistę.
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **ticket-questions.prompt.md**</summary>
+
+@@ lines 16-22 @@
+
+```
+the quality checklist defined in [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md).
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Zrobione:
+
+- `.github/instructions/ticket-clarification.instructions.md` — checklista jakości ticketu, wyciągnięta z promptu, auto-attach dla plików w `exercises/tickets/**`, discoverable on-demand przy triage ticketów.
+- `.github/prompts/ticket-questions.prompt.md` — zaktualizowany, odsyła do instrukcji zamiast duplikować checklistę.
+
+**Najsłabszy/najbardziej niejasny punkt:** `applyTo: "exercises/tickets/**"` — instrukcja będzie się auto-dołączać przy każdej edycji plików w tym folderze, nawet gdy user tworzy nowy ticket (nie tylko przy triage istniejącego). Czy to pożądane, czy woleliby Państwo, by instrukcja była tylko *on-demand* (bez `applyTo`, tylko przez `description`)?
+
+Propozycje kolejnych customizacji:
+- Osobna instrukcja `docs/meetings/**` z konwencją nazewnictwa i formatu notatek ze spotkań.
+- Prompt `/ticket-answer` do generowania finalnej odpowiedzi na ticket po ustaleniu parametrów.

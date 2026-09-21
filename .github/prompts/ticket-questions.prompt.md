@@ -13,13 +13,7 @@ Produce a clarification report for the ticket so open questions can be resolved 
 # Instructions
 
 1. **Read the ticket** referenced by the user (path or ID under `exercises/tickets/`).
-2. **Checklist the ticket** against what a well-formed data request should contain:
-   - Clear metric/question definition
-   - Time period / as-of date
-   - Scope (customers, stores, products, tiers, etc.)
-   - Data source or expected report
-   - Priority/deadline
-   - Acceptance criteria (how the requester will validate the answer)
+2. **Checklist the ticket** against the quality checklist defined in [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md).
 3. **Search the codebase** for related tables, views, procedures, or docs that could already answer the request (check `RetailDW/Tables`, `RetailDW/Views`, `RetailDW/Procedures`, `docs/`).
 4. **Identify conflicts or gaps**, e.g. contradictory definitions between docs and existing views.
 
