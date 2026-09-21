@@ -18,7 +18,7 @@ Loop through clarification questions against the ticket, one batch at a time, un
 
 # Loop
 
-1. Ask the user 1–3 highest-priority open questions at a time.
+1. Ask the user 1–3 highest-priority open questions at a time. Use #askQuestions and #todo tools.
 2. After each answer (or small batch of answers):
    - Move resolved items into **Highlights**, and into **Decisions** if they represent a firm decision.
    - Check off / remove resolved checklist items and open questions the user actually answered.
