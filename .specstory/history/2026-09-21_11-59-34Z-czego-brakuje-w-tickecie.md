@@ -654,3 +654,432 @@ Zrobione:
 Propozycje kolejnych customizacji:
 - Osobna instrukcja `docs/meetings/**` z konwencją nazewnictwa i formatu notatek ze spotkań.
 - Prompt `/ticket-answer` do generowania finalnej odpowiedzi na ticket po ustaleniu parametrów.
+
+---
+
+_**User (2026-09-21 12:38:24Z)**_
+
+/create-prompt ticket clarification session 
+
+loop: grill user until everything is clear, no questions left or user wants to stop.
+
+at the start create /docs/meetings/<data>-<ticket>-session.md
+
+after every few questions or important decisions update file
+
+use #attachment:ticket-clarification.instructions.md as reference 
+
+Format: 
+- title, ticket, date, author
+- clear redable nested list
+- highlights
+- list of open questions
+
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `ticket-clarification-session.prompt.md`
+
+**Input:**
+
+- content:
+
+````
+---
+description: "Run an interactive clarification session for a ticket, looping through questions with the user until the ticket is fully clear or the user stops. Maintains a live session file in docs/meetings/."
+name: "Ticket Clarification Session"
+argument-hint: "Path to ticket file or ticket ID"
+agent: "agent"
+---
+# Role
+You are a Data Analyst running a live clarification session with the ticket requester (the user).
+
+# Goal
+Loop through clarification questions against the ticket, one batch at a time, until nothing is left unclear or the user asks to stop. Keep a running session file up to date throughout — do not wait until the end to write it.
+
+# Setup
+
+1. Read the ticket referenced by the user (path or ID under `exercises/tickets/`).
+2. Determine `<date>` (current date, `YYYY-MM-DD`) and `<ticket-id>`.
+3. Immediately create `docs/meetings/<date>-<ticket-id>-session.md` using the Output Format below. Fill the checklist using [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md) and list the initial open questions.
+
+# Loop
+
+1. Ask the user 1–3 highest-priority open questions at a time.
+2. After each answer (or small batch of answers):
+   - Move resolved items into **Highlights**.
+   - Check off / remove resolved checklist items and open questions.
+   - Add any new open questions that surfaced from the answer.
+   - Update the session file immediately with these changes.
+3. Repeat until:
+   - No open questions remain against the checklist, **or**
+   - The user explicitly says to stop.
+4. On exit, do a final update to the session file and tell the user whether the session ended **Resolved** or **Stopped early**.
+
+# Output Format — `docs/meetings/<date>-<ticket-id>-session.md`
+
+```markdown
+# <Ticket Title>
+
+- **Ticket:** <ticket-id>
+- **Date:** <date>
+- **Author:** <requester name>
+
+## Checklist
+- [ ] Metric/question definition
+- [ ] Time period / as-of date
+- [ ] Scope
+- [ ] Data source / expected report
+- [ ] Priority/deadline
+- [ ] Acceptance criteria
+
+## Highlights
+- <resolved decision, one per line>
+  - <supporting detail if needed>
+
+## Open questions
+1. <question>
+
+## Sources checked
+- <file or db object>: <why relevant>
+```
+
+# Notes
+
+- Reference checklist items from [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md); do not redefine them here.
+- Never mark a checklist item or open question resolved unless the user actually confirmed it — do not guess.
+- Keep questions concrete and answerable in one line where possible.
+
+````
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\prompts\ticket-clarification-session.prompt.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\prompts\ticket-clarification-session.prompt.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **ticket-clarification-session.prompt.md**</summary>
+
+@@ lines 1-1 @@
+
+````
+---
+description: "Run an interactive clarification session for a ticket, looping through questions with the user until the ticket is fully clear or the user stops. Maintains a live session file in docs/meetings/."
+name: "Ticket Clarification Session"
+argument-hint: "Path to ticket file or ticket ID"
+agent: "agent"
+---
+# Role
+You are a Data Analyst running a live clarification session with the ticket requester (the user).
+
+# Goal
+Loop through clarification questions against the ticket, one batch at a time, until nothing is left unclear or the user asks to stop. Keep a running session file up to date throughout — do not wait until the end to write it.
+
+# Setup
+
+1. Read the ticket referenced by the user (path or ID under `exercises/tickets/`).
+2. Determine `<date>` (current date, `YYYY-MM-DD`) and `<ticket-id>`.
+3. Immediately create `docs/meetings/<date>-<ticket-id>-session.md` using the Output Format below. Fill the checklist using [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md) and list the initial open questions.
+
+# Loop
+
+1. Ask the user 1–3 highest-priority open questions at a time.
+2. After each answer (or small batch of answers):
+   - Move resolved items into **Highlights**.
+   - Check off / remove resolved checklist items and open questions.
+   - Add any new open questions that surfaced from the answer.
+   - Update the session file immediately with these changes.
+3. Repeat until:
+   - No open questions remain against the checklist, **or**
+   - The user explicitly says to stop.
+4. On exit, do a final update to the session file and tell the user whether the session ended **Resolved** or **Stopped early**.
+
+# Output Format — `docs/meetings/<date>-<ticket-id>-session.md`
+
+```markdown
+# <Ticket Title>
+
+- **Ticket:** <ticket-id>
+- **Date:** <date>
+- **Author:** <requester name>
+
+## Checklist
+- [ ] Metric/question definition
+- [ ] Time period / as-of date
+- [ ] Scope
+- [ ] Data source / expected report
+- [ ] Priority/deadline
+- [ ] Acceptance criteria
+
+## Highlights
+- <resolved decision, one per line>
+  - <supporting detail if needed>
+
+## Open questions
+1. <question>
+
+## Sources checked
+- <file or db object>: <why relevant>
+```
+
+# Notes
+
+- Reference checklist items from [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md); do not redefine them here.
+- Never mark a checklist item or open question resolved unless the user actually confirmed it — do not guess.
+- Keep questions concrete and answerable in one line where possible.
+
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Utworzyłem `.github/prompts/ticket-clarification-session.prompt.md`.
+
+**Jak działa:**
+1. Na starcie czyta ticket i tworzy `docs/meetings/<data>-<ticket-id>-session.md` z checklistą wyciągniętą z `.github/instructions/ticket-clarification.instructions.md`.
+2. Zadaje 1–3 pytania na raz, po każdej odpowiedzi aktualizuje plik (Highlights, checklist, open questions) — nie czeka do końca.
+3. Loop trwa aż wszystko jasne albo user powie stop; na koniec oznacza sesję jako Resolved/Stopped early.
+
+**Najbardziej niejasny punkt:** nie sprecyzowałem, co się dzieje, gdy user zignoruje pytanie i przejdzie do innego tematu — czy pytanie ma zostać otwarte w nieskończoność, czy po np. 2 rundach bez odpowiedzi agent powinien je odpuścić i zanotować jako "unresolved – deferred"? Chcesz, żebym to dodał?
+
+**Przykładowe wywołanie:** `/ticket-clarification-session exercises/tickets/DPO-2105.md`
+
+**Propozycje dalszych customizacji:**
+- Prompt `/ticket-answer` — generuje finalną odpowiedź do zarządu na bazie zamknionej sesji.
+- Instrukcja dla `docs/meetings/**` z konwencją nazewnictwa/formatu, żeby inne prompty (np. ten) mogły się do niej odwołać zamiast duplikować format.
+
+---
+
+_**User (2026-09-21 12:42:08Z)**_
+
+1. zignorowane pytania - zostaw jako open
+2. dodatkowa instruckcja doc/meetings/* - wymagane w kazdej notatce ze spotkania - tytuł,data,autor,czego dotyczy spotkanie, <tresc>, podsumowanie w podpunktach : decyzje + action points
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `ticket-clarification-session.prompt.md`, lines 1 to 62
+
+**Input:**
+
+- endLine: `62`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\prompts\ticket-clarification-session.prompt.md`
+- startLine: `1`
+
+**Result:**
+
+````
+---
+description: "Run an interactive clarification session for a ticket, looping through questions with the user until the ticket is fully clear or the user stops. Maintains a live session file in docs/meetings/."
+name: "Ticket Clarification Session"
+argument-hint: "Path to ticket file or ticket ID"
+agent: "agent"
+---
+# Role
+You are a Data Analyst running a live clarification session with the ticket requester (the user).
+
+# Goal
+Loop through clarification questions against the ticket, one batch at a time, until nothing is left unclear or the user asks to stop. Keep a running session file up to date throughout — do not wait until the end to write it.
+
+# Setup
+
+1. Read the ticket referenced by the user (path or ID under `exercises/tickets/`).
+2. Determine `<date>` (current date, `YYYY-MM-DD`) and `<ticket-id>`.
+3. Immediately create `docs/meetings/<date>-<ticket-id>-session.md` using the Output Format below. Fill the checklist using [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md) and list the initial open questions.
+
+# Loop
+
+1. Ask the user 1–3 highest-priority open questions at a time.
+2. After each answer (or small batch of answers):
+   - Move resolved items into **Highlights**.
+   - Check off / remove resolved checklist items and open questions.
+   - Add any new open questions that surfaced from the answer.
+   - Update the session file immediately with these changes.
+3. Repeat until:
+   - No open questions remain against the checklist, **or**
+   - The user explicitly says to stop.
+4. On exit, do a final update to the session file and tell the user whether the session ended **Resolved** or **Stopped early**.
+
+# Output Format — `docs/meetings/<date>-<ticket-id>-session.md`
+
+```markdown
+# <Ticket Title>
+
+- **Ticket:** <ticket-id>
+- **Date:** <date>
+- **Author:** <requester name>
+
+## Checklist
+- [ ] Metric/question definition
+- [ ] Time period / as-of date
+- [ ] Scope
+- [ ] Data so
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `meeting-notes.instructions.md`
+
+**Input:**
+
+- content:
+
+```
+---
+description: "Use when creating or updating a meeting note under docs/meetings/. Defines the required structure every meeting note must follow."
+name: "Meeting Notes Structure"
+applyTo: "docs/meetings/**"
+---
+# Meeting Note Structure
+
+Every meeting note must include, in this order:
+
+1. **Title** — what the meeting/session is about
+2. **Metadata** — Date, Author (requester or participant)
+3. **Purpose** — what the meeting/session is about (one or two lines)
+4. **Content** — the body of the note (checklist, discussion, questions, etc. — structure depends on the note's purpose)
+5. **Summary** — as the final section, split into:
+   - **Decisions** — what was agreed/confirmed
+   - **Action points** — what needs to happen next, and by whom if known
+
+Do not omit the Summary section even if a session is stopped early or inconclusive — state clearly which decisions/actions exist so far.
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\instructions\meeting-notes.instructions.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\instructions\meeting-notes.instructions.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **meeting-notes.instructions.md**</summary>
+
+@@ lines 1-1 @@
+
+```
+---
+description: "Use when creating or updating a meeting note under docs/meetings/. Defines the required structure every meeting note must follow."
+name: "Meeting Notes Structure"
+applyTo: "docs/meetings/**"
+---
+# Meeting Note Structure
+
+Every meeting note must include, in this order:
+
+1. **Title** — what the meeting/session is about
+2. **Metadata** — Date, Author (requester or participant)
+3. **Purpose** — what the meeting/session is about (one or two lines)
+4. **Content** — the body of the note (checklist, discussion, questions, etc. — structure depends on the note's purpose)
+5. **Summary** — as the final section, split into:
+   - **Decisions** — what was agreed/confirmed
+   - **Action points** — what needs to happen next, and by whom if known
+
+Do not omit the Summary section even if a session is stopped early or inconclusive — state clearly which decisions/actions exist so far.
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Teraz zaktualizuję prompt sesji: pytania ignorowane zostają jako open, dodaję sekcję Summary (Decisions + Action points) i odsyłam do nowej instrukcji o strukturze 
+
+Teraz zaktualizuję prompt sesji: pytania ignorowane zostają jako open, dodaję sekcję Summary (Decisions + Action points) i odsyłam do nowej instrukcji o strukturze notatek.
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **ticket-clarification-session.prompt.md**</summary>
+
+@@ lines 17-57 @@
+
+````
+following [meeting-notes.instructions.md](../instructions/meeting-notes.instructions.md) and the Output Format below. Fill the checklist using [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md) and list the initial open questions.
+
+# Loop
+
+1. Ask the user 1–3 highest-priority open questions at a time.
+2. After each answer (or small batch of answers):
+   - Move resolved items into **Highlights**, and into **Decisions** if they represent a firm decision.
+   - Check off / remove resolved checklist items and open questions the user actually answered.
+   - Questions the user ignored or skipped stay in **Open questions** — do not drop or mark them resolved.
+   - Add any new open questions that surfaced from the answer.
+   - Update the session file immediately with these changes.
+3. Repeat until:
+   - No open questions remain against the checklist, **or**
+   - The user explicitly says to stop.
+4. On exit, do a final update to the session file: fill in **Decisions** and **Action points** in the Summary, and tell the user whether the session ended **Resolved** or **Stopped early** (with remaining open questions listed).
+
+# Output Format — `docs/meetings/<date>-<ticket-id>-session.md`
+
+```markdown
+# <Ticket Title>
+
+- **Date:** <date>
+- **Author:** <requester name>
+
+## Purpose
+Clarification session for ticket <ticket-id>: <one-line summary>.
+
+## Checklist
+- [ ] Metric/question definition
+- [ ] Time period / as-of date
+- [ ] Scope
+- [ ] Data source / expected report
+- [ ] Priority/deadline
+- [ ] Acceptance criteria
+
+## Highlights
+- <resolved decision, one per line>
+  - <supporting detail if needed>
+
+## Open questions
+1. <question>
+
+## Sources checked
+- <file or db object>: <why relevant>
+
+## Summary
+### Decisions
+- <decision>
+
+### Action points
+- <action, owner if known
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Zaktualizowane:
+
+- `.github/instructions/meeting-notes.instructions.md` — nowa instrukcja, `applyTo: docs/meetings/**`, wymusza: tytuł, data, autor, cel spotkania, treść, oraz sekcję Summary z **Decisions** + **Action points** (obowiązkowa nawet gdy sesja przerwana).
+- `.github/prompts/ticket-clarification-session.prompt.md`:
+  - zignorowane/pominięte pytania zostają w **Open questions** (nie są usuwane/oznaczane jako resolved),
+  - format wyjściowy zaktualizowany o `Purpose` i sekcję `Summary` (Decisions + Action points), zgodnie z nową instrukcją.
