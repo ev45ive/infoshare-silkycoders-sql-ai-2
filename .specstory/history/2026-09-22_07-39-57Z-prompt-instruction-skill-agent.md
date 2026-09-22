@@ -624,5 +624,69 @@ _**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
 <tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
 <summary>Tool use: **vscode_askQuestions**</summary>
 
-Asked a question (filename)
+Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "header": "filename",
+    "options": [
+      {
+        "description": "Zwięzła, ogólna nazwa",
+        "label": "customization-primitives.md"
+      },
+      {
+        "description": "Konkretna lista czterech typów",
+        "label": "prompt-instruction-skill-agent.md"
+      },
+      {
+        "description": "Po polsku, czytelnie",
+        "label": "porownanie-customizacji.md"
+      },
+      {
+        "description": "Wpisz własną nazwę",
+        "label": "Moja propozycja"
+      }
+    ],
+    "question": "Jaka nazwa pliku pasuje do treści (porównanie Prompt, Instruction, Skill, Agent)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"filename":{"selected":["porownanie-customizacji.md"],"freeText":null,"skipped":false}}}
+```
 </details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` mv notatki/notatki.md notatki/porownanie-customizacji.md`
+
+Rename the notes file to a descriptive name matching its content
+
+```bash
+mv notatki/notatki.md notatki/porownanie-customizacji.md
+```
+
+**Result:**
+
+```
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+✅ Plik zmieniony: `notatki/notatki.md` → `notatki/porownanie-customizacji.md`
