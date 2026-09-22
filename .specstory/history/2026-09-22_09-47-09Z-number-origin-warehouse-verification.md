@@ -3432,3 +3432,397 @@ Każda pozycja zaokrąglana jest **osobno do 2 miejsc**, a potem sumowane — to
 **Różnica 4,30 zł (0,16%) jest wynikiem różnych metod zaokrąglenia — to norma i nie stanowi problemu.**
 
 Główny rozjazd 58 tys. zł wynikał z duplikatu **POS_20260817_RETRY.csv**, a nie z zaokrągleń!
+
+---
+
+_**User (2026-09-22 10:23:45Z)**_
+
+/create-skill lineage-metryki na podstawie naszego procesu oraz notatki #attachment:skill 2 - lineage metryki.md 
+
+---
+
+_**Agent (anthropic/Anthropic/claude-haiku-4-5-20251001)**_
+
+Doskonale! Właśnie przeszliśmy przez cały proces lineage metryki — mogę teraz stworzyć skill na bazie tego doświadczenia. Zanim napiszę SKILL.md, muszę rozstrzygnąć 3 pytania z notatki:
+
+## 🎯 Pytania uściślające
+
+1. **Jak głęboko schodzić?**
+   - W naszej analizie poszliśmy: raport → FactSales → stg.Sales → **src.SalesRaw** (dane surowe) → **pliki źródłowe** (POS_20260817.csv)
+   - Czy skill ma **zawsze sięgać do plików źródłowych**, czy wystarczy do src.*?
+   - Czy interesuje nas również **system źródłowy** (kas, systemu online)?
+
+2. **Co jeśli rozjazd jest w obiekcie, którego nie wolno zmienić?**
+   - Nasz przypadek: duplikat w procedurze ETL (etl.LoadSales)
+   - Czy skill ma zaproponować:
+     - A) Obejście w zapytaniu (pominąć RETRY pliki)?
+     - B) Zgłoszenie do zespołu danych (poprawka u źródła)?
+     - C) Oba?
+
+3. **Diagram zawsze czy tylko dla >2 warstw?**
+   - W naszym przypadku mamy 5 warstw (raport → FactSales → stg → src → pliki)
+   - Proponuję: diagram **zawsze, gdy łańcuch >2 warstwy**, bo ratuje rozmowę
+
+---
+
+Zaproponuj odpowiedzi albo powiedz "domyślnie" to użyję:
+- **Głębokość:** do `src.*` + pliki źródłowe (w hurtowni skończy się na src)
+- **Rozjazd w niedotykalnym obiekcie:** proponować ZARÓWNO obejście, ORAZ zgłoszenie do zespołu
+- **Diagram:** zawsze >2 warstwy
+
+To wystarczy do napisania SKILL.md?
+
+---
+
+_**User (2026-09-22 10:26:42Z)**_
+
+pogłebiaj do kolejnych warstw w miarę potrzeb aż znajdziesz powód
+2.C - oba
+3. ok
+
+skill format zgodny z instruckaj w vs code 2026
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Sprawdzę format i wzorzec dla SKILL.md z instrukcji agent-customization:
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `agent-customization`
+
+**Input:**
+
+- endLine: `400`
+- filePath: `c:\Users\teamsharq\AppData\Local\Programs\Microsoft VS Code\7debcd0e2a\resources\app\extensions\copilot\assets\prompts\skills\agent-customization\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+name: agent-customization
+user-invocable: false # don't show as slash command, we have sepcialized create-agent, create-instructions, create-hook prompts for that
+description: '**WORKFLOW SKILL** — Create, update, review, fix, or debug VS Code agent customization files (.instructions.md, .prompt.md, .agent.md, SKILL.md, copilot-instructions.md, AGENTS.md). USE FOR: saving coding preferences; troubleshooting why instructions/skills/agents are ignored or not invoked; configuring applyTo patterns; defining tool restrictions; creating custom agent modes or specialized workflows; packaging domain knowledge; fixing YAML frontmatter syntax. DO NOT USE FOR: general coding questions (use default agent); runtime debugging or error diagnosis; MCP server configuration (use MCP docs directly); VS Code extension development. INVOKES: file system tools (read/write customization files), ask-questions tool (interview user for requirements), subagents for codebase exploration. FOR SINGLE OPERATIONS: For quick YAML frontmatter fixes or creating a single file from a known pattern, edit the file directly — no skill needed.'
+---
+
+# Agent Customization
+
+## Decision Flow
+
+| Primitive | When to Use |
+|-----------|-------------|
+| agent instructions | Always-on, applies everywhere in the project |
+| File Instructions | Explicit via `applyTo` patterns, or on-demand via `description` |
+| MCP | Integrates external systems, APIs, or data |
+| Hooks | Deterministic shell commands at agent lifecycle points (block tools, auto-format, inject context) |
+| Custom Agents | Subagents for context isolation, or multi-stage workflows with tool restrictions |
+| Prompts | Single focused task with parameterized inputs |
+| Skills | On-demand workflow with bundled assets (scripts/templates) |
+
+## Quick Reference
+
+Consult the reference docs for templates, domain examples, advanced frontmatter options, asset organization, anti-patterns, and creation checklists. If the references are not enough, load the offici
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `agent-customization`: `skills.md`
+
+**Input:**
+
+- endLine: `300`
+- filePath: `c:\Users\teamsharq\AppData\Local\Programs\Microsoft VS Code\7debcd0e2a\resources\app\extensions\copilot\assets\prompts\skills\agent-customization\references\skills.md`
+- startLine: `1`
+
+**Result:**
+
+````
+# [Agent Skills (SKILL.md)](https://code.visualstudio.com/docs/copilot/customization/agent-skills)
+
+Folders of instructions, scripts, and resources that agents load on-demand for specialized tasks.
+
+## Structure
+
+```
+.github/skills/<skill-name>/
+├── SKILL.md           # Required (name must match folder)
+├── scripts/           # Executable code
+├── references/        # Docs loaded as needed
+└── assets/            # Templates, boilerplate
+```
+
+## Locations
+
+| Path | Scope |
+|------|-------|
+| `.github/skills/<name>/` | Project |
+| `.agents/skills/<name>/` | Project |
+| `.claude/skills/<name>/` | Project |
+| `~/.copilot/skills/<name>/` | Personal |
+| `~/.agents/skills/<name>/` | Personal |
+| `~/.claude/skills/<name>/` | Personal |
+
+## SKILL.md Format
+
+```yaml
+---
+name: skill-name              # Required: 1-64 chars, lowercase alphanumeric + hyphens, must match folder
+description: 'What and when to use. Max 1024 chars.'
+argument-hint: 'Optional hint shown for slash invocation'
+user-invocable: true          # Optional: show as slash command (default: true)
+disable-model-invocation: false # Optional: disable automatic model-triggered loading
+---
+```
+
+### Body
+
+- What the skill accomplishes
+- When to use (triggers and use cases)
+- Step-by-step procedures
+- References to resources: `[script](./scripts/test.js)`
+
+## Template
+
+```markdown
+---
+name: webapp-testing
+description: 'Test web applications using Playwright. Use for verifying frontend, debugging UI, capturing screenshots.'
+---
+
+# Web Application Testing
+
+## When to Use
+- Verify frontend functionality
+- Debug UI behavior
+
+## Procedure
+1. Start the web server
+2. Run [test script](./scripts/test.js)
+3. Review screenshots in `./screenshots/`
+```
+
+## Progressive Loading
+
+1. **Discovery** (~100 tokens): Agent reads `name` and `description`
+2. **Instructions** (<5000 tokens): Loads `SKILL.md` body when relevant
+3. **Resources**: Additional files load only when referenced
+
+Keep file references one level deep from `SKILL.md`.
+
+… (output truncated)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Sprawdzę istniejący skill `analiza-zgloszenia` jako wzór dla tego repo:
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `analiza-zgloszenia`
+
+**Input:**
+
+- endLine: `300`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\analiza-zgloszenia\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+name: analiza-zgloszenia
+description: "Analiza zgłoszenia biznesowego: od pytania (tzw. wrzutka), przez SQL, do wyniku i podsumowania. Skill wymusza powtarzalny przebieg z punktami kontrolnymi i stałym formatem wyjścia."
+applyTo: "zgloszenia/**/*.md"
+---
+
+# Skill: analiza-zgloszenia
+
+Skill do analizy zgłoszeń biznesowych w RetailDW. Bierze niejasne pytanie → zwraca liczbę + uzasadnienie.
+
+## Kiedy się uruchamia
+
+- Dostajesz zgłoszenie biznesowe z pytaniem, które trzeba odpowiedzieć liczbą z hurtowni
+- Przykłady: „Ile sprzedaży w ostatnim tygodniu?", „Porównaj marżę w dwóch okresach", „Jaka jest dostępność towaru?"
+
+## Czego NIE obejmuje
+
+- Recenzowania cudzego SQL (to jest code review, nie analiza)
+- Śledzenia pochodzenia liczby w istniejącym raporcie (to jest debug, nie analiza)
+- Pisania kodu do bazy (procedury, widoki, tabele — to jest inżynieria danych)
+- Raportowania biznesowego (twój wyjścia to surowiec, oddasz biznesowi — nie piszesz dla nich)
+
+## Workflow — 5 Faz z Punktami Kontrolnymi
+
+### Faza 1: Doprecyzowanie
+**Cel**: Upewnić się, że rozumiesz pytanie, zanim zaczniesz SQL.
+
+1. Przepisz zgłoszenie własnymi słowami
+2. Wypisz, czego w nim brakuje:
+   - **Okres** — od kiedy do kiedy?
+   - **Zakres** — które sklepy, kanały, kategorie, produkty?
+   - **Metryka** — co dokładnie mierzymy?
+   - **Jednostka** — sztuki, złotówki, transakcje, procent, coś innego?
+   - **Punkt odniesienia** — z czym porównujemy (niezdefiniowany, poprzedni okres, plan, średnia)?
+
+3. **Jeśli coś brakuje**: Zapytaj, ale zasugeruj najrozsądniejszą domyślną wartość. Niech requester potwierdzi lub przesłoży.
+
+4. **CHECKPOINT**: Pokaż propozycję doprecyzowania i czekaj na akceptację zanim pójdziesz dalej.
+
+### Faza 2: Definicja Metryki
+**Cel**: Znaleźć lub ustalić, co dokładnie mieirimy.
+
+1. Sprawdź [docs/slownik-metryk.md](../../docs/slownik-metryk.md) — czy metryka tam jest?
+2. Jeśli jest:
+   - Użyj jej definicji
+   - Podaj źródło (link do 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get-syntax-docs-mermaid"><details>
+<summary>Tool use: **get-syntax-docs-mermaid**</summary>
+
+Fetching Mermaid documentation for flowchart.md
+
+**Input:**
+
+- file: `flowchart.md`
+
+**Result:**
+
+````
+---
+title: Flowcharts Syntax
+---
+
+# Flowcharts - Basic Syntax
+
+Flowcharts are composed of **nodes** (geometric shapes) and **edges** (arrows or lines). The Mermaid code defines how nodes and edges are made and accommodates different arrow types, multi-directional arrows, and any linking to and from subgraphs.
+
+```warning
+If you are using the word "end" in a Flowchart node, capitalize the entire word or any of the letters (e.g., "End" or "END"), or apply this [workaround](https://github.com/mermaid-js/mermaid/issues/1444#issuecomment-639528897). Typing "end" in all lowercase letters will break the Flowchart.
+```
+
+```warning
+If you are using the letter "o" or "x" as the first letter in a connecting Flowchart node, add a space before the letter or capitalize the letter (e.g., "dev--- ops", "dev---Ops").
+
+Typing "A---oB" will create a [circle edge](#circle-edge-example).
+
+Typing "A---xB" will create a [cross edge](#cross-edge-example).
+```
+
+### A node (default)
+
+```mermaid
+---
+title: Node
+---
+flowchart LR
+    id
+```
+
+```note
+The id is what is displayed in the box.
+```
+
+```tip
+Instead of `flowchart` one can also use `graph`.
+```
+
+### A node with text
+
+It is also possible to set text in the box that differs from the id. If this is done several times, it is the last text
+found for the node that will be used. Also if you define edges for the node later on, you can omit text definitions. The
+one previously defined will be used when rendering the box.
+
+```mermaid
+---
+title: Node with text
+---
+flowchart LR
+    id1["This is the text in the box"]
+```
+
+#### Unicode text
+
+Use `"` to enclose the unicode text.
+
+```mermaid
+flowchart LR
+    id["This ❤ Unicode"]
+```
+
+#### Markdown formatting
+
+Use double quotes and backticks "\` text \`" to enclose the markdown text.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+flowchart LR
+    markdown["`This **is** _Markdown_`"]
+    newLines["`Line1
+    Line 2
+    Line 3`"]
+    markdown --> newLines
+```
+
+### Direction
+
+This statement 
+… (output truncated)
+````
+</details></tool-use>
+
+---
+
+_**User (2026-09-22 10:31:05Z)**_
+
+@agent Try Again
+
+---
+
+_**User (2026-09-22 10:31:27Z)**_
+
+@agent Try Again
+
+---
+
+_**User (2026-09-22 10:31:41Z)**_
+
+@agent Try Again
+
+---
+
+_**User (2026-09-22 10:31:54Z)**_
+
+@agent Try Again
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Piszę teraz plik SKILL.md. Najpierw zwaliduję przykładowy diagram mermaid, który umieszczę jako wzór w skillu:
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="mermaid-diagram-validator"><details>
+<summary>Tool use: **mermaid-diagram-validator**</summary>
+
+Validating Mermaid diagram syntax
+</details></tool-use>
