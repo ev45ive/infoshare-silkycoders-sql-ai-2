@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /*
- * Generuje poniedziałkowy przegląd handlowy jako PDF (wg szablonu z
- * ../assets/szablon-raportu.md) oraz proste zestawienie tabel w Excelu.
+ * Generuje poniedziałkowy przegląd handlowy: PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) i/lub proste zestawienie tabel w Excelu —
+ * na żądanie, przez flagi CLI.
  *
  * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
  * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
  *
- * Wymaga: npm install (w tym samym folderze) przed pierwszym uruchomieniem.
+ * Pierwsze uruchomienie: skrypt sam wykrywa brak node_modules i uruchamia
+ * `npm install` w tym folderze — nie trzeba nic instalować ręcznie.
+ *
  * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
  *   MSSQL_HOST      (domyślnie 127.0.0.1)
  *   MSSQL_PORT      (domyślnie 14330)
@@ -14,26 +17,60 @@
  *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
  *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
  *
+ * Insights: sekcja "Insights & Decyzje" w PDF wymaga interpretacji danych
+ * przez analityka/agenta (SQL sam z siebie jej nie da — patrz SKILL.md).
+ * Przekaż gotowe punkty plikiem JSON: { "insights": ["punkt 1", "punkt 2"] }.
+ * Bez --insights sekcja zostaje pusta z przypomnieniem do uzupełnienia.
+ *
  * Użycie:
- *   node generate-report.js [--out <folder>]
+ *   node generate-report.js [--pdf] [--xlsx] [--insights <plik.json>] [--out <folder>]
+ *   (bez --pdf/--xlsx generowane są oba formaty)
  */
 
 const fs = require('fs');
 const path = require('path');
-const sql = require('mssql');
-const PDFDocument = require('pdfkit');
-const ExcelJS = require('exceljs');
+const { spawnSync } = require('child_process');
 
 const SCRIPT_DIR = __dirname;
 const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
 
+// Wypełniane przez ensureDependencies() po weryfikacji/instalacji node_modules.
+let sql, PDFDocument, ExcelJS;
+
+function ensureDependencies() {
+  const nodeModulesPath = path.join(SCRIPT_DIR, 'node_modules');
+  const required = ['mssql', 'pdfkit', 'exceljs'];
+  const missing = required.some((pkg) => !fs.existsSync(path.join(nodeModulesPath, pkg)));
+
+  if (missing) {
+    console.log('Pierwsze uruchomienie — brak zależności, instaluję (npm install)...');
+    const result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true });
+    if (result.status !== 0) {
+      throw new Error(`npm install nie powiodło się. Uruchom ręcznie "npm install" w ${SCRIPT_DIR}`);
+    }
+  }
+
+  sql = require('mssql');
+  PDFDocument = require('pdfkit');
+  ExcelJS = require('exceljs');
+}
+
 function parseArgs(argv) {
-  const args = { out: path.join(SCRIPT_DIR, 'out') };
+  const args = { out: path.join(SCRIPT_DIR, 'out'), pdf: false, xlsx: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--out' && argv[i + 1]) {
       args.out = path.resolve(argv[i + 1]);
       i++;
+    } else if (argv[i] === '--pdf') {
+      args.pdf = true;
+    } else if (argv[i] === '--xlsx' || argv[i] === '--excel') {
+      args.xlsx = true;
     }
+  }
+  // Bez jawnych flag generujemy oba formaty (dotychczasowe zachowanie).
+  if (!args.pdf && !args.xlsx) {
+    args.pdf = true;
+    args.xlsx = true;
   }
   return args;
 }
@@ -240,19 +277,23 @@ async function buildExcel(data, outPath) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  ensureDependencies();
   fs.mkdirSync(args.out, { recursive: true });
 
-  const fonts = resolveFonts();
   const data = await fetchData();
 
-  const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
-  const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+  if (args.pdf) {
+    const fonts = resolveFonts();
+    const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
+    await buildPdf(data, pdfPath, fonts);
+    console.log(`PDF:   ${pdfPath}`);
+  }
 
-  await buildPdf(data, pdfPath, fonts);
-  await buildExcel(data, xlsxPath);
-
-  console.log(`PDF:   ${pdfPath}`);
-  console.log(`Excel: ${xlsxPath}`);
+  if (args.xlsx) {
+    const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+    await buildExcel(data, xlsxPath);
+    console.log(`Excel: ${xlsxPath}`);
+  }
 }
 
 main().catch((err) => {

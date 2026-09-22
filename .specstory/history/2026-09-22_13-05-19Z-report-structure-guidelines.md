@@ -4723,10 +4723,26 @@ gitignore node_modules
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `.gitignore`
+
+**Input:**
+
+- endLine: `10`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.gitignore`
+- startLine: `1`
+
+**Result:**
+
+```
+
+RetailDW/bin
+RetailDW/obj
+.tessdata/
+.vs/*
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
@@ -4739,5 +4755,747 @@ _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
 ```
 node_modules/
 .github/skills/poniedzialkowy-raport-handlowy/scripts/out/
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Dodałem `node_modules/` (globalnie) oraz folder `scripts/out/` skilla (wygenerowane PDF/Excel) do `.gitignore#L6-L7`.
+
+---
+
+_**User (2026-09-22 13:35:04Z)**_
+
+pdf i/lub csv generowane na żądanie + weryfikacja/instalacja skryptu jeśli pierwszy taz - dodaj do skilla
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Asked 3 questions (Format CSV vs Excel, Wybór formatu na żądanie, Auto-instalacja zależności)
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "allowFreeformInput": false,
+    "header": "Format CSV vs Excel",
+    "options": [
+      {
+        "description": "Prostszy format, bez zależności od exceljs — jedna tabela na plik .csv",
+        "label": "CSV zastępuje Excel",
+        "recommended": true
+      },
+      {
+        "description": "Zostaje PDF + Excel (.xlsx), dochodzi trzeci format .csv do wyboru",
+        "label": "CSV jako dodatkowa opcja"
+      }
+    ],
+    "question": "Czy CSV ma zastąpić obecny eksport do Excela (.xlsx), czy być dodatkową opcją obok PDF i Excela?"
+  },
+  {
+    "allowFreeformInput": true,
+    "header": "Wybór formatu na żądanie",
+    "options": [
+      {
+        "description": "np. node generate-report.js --pdf --csv (domyślnie oba, jeśli nic nie podano)",
+        "label": "Flagi CLI",
+        "recommended": true
+      },
+      {
+        "description": "np. REPORT_FORMATS=pdf,csv",
+        "label": "Zmienna środowiskowa"
+      }
+    ],
+    "question": "Jak użytkownik ma wybierać, który format wygenerować (PDF i/lub CSV)?"
+  },
+  {
+    "allowFreeformInput": false,
+    "header": "Auto-instalacja zależności",
+    "options": [
+      {
+        "description": "Skrypt wykrywa brak node_modules i sam instaluje zależności przed dalszą pracą",
+        "label": "Automatyczny npm install",
+        "recommended": true
+      },
+      {
+        "description": "Skrypt kończy działanie z jasnym komunikatem 'uruchom npm install w tym folderze'",
+        "label": "Tylko komunikat"
+      }
+    ],
+    "question": "Czy skrypt ma sam sprawdzić i uruchomić 'npm install' przy pierwszym użyciu (brak node_modules), czy tylko wypisać czytelny komunikat z instrukcją?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+The user cancelled the tool call.
+```
+</details></tool-use>
+
+---
+
+_**User (2026-09-22 13:35:51Z)**_
+
+nie CSV, tylko excel jw. sorry
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`, lines 1 to 40
+
+**Input:**
+
+- endLine: `40`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `1`
+
+**Result:**
+
+```
+#!/usr/bin/env node
+/*
+ * Generuje poniedziałkowy przegląd handlowy jako PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) oraz proste zestawienie tabel w Excelu.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Wymaga: npm install (w tym samym folderze) przed pierwszym uruchomieniem.
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--out <folder>]
+ */
+
+const fs = require('fs');
+const path = require('path');
+const sql = require('mssql');
+const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+function parseArgs(argv) {
+  const args = { out: path.join(SCRIPT_DIR, 'out') };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--out' && argv[i + 1]) {
+      args.out = path.resolve(argv[i + 1]);
+      i++;
+    }
+  }
+  return args;
+}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`, lines 40 to 262
+
+**Input:**
+
+- endLine: `280`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `40`
+
+**Result:**
+
+```
+
+function findFont(envVar, candidates) {
+  if (process.env[envVar] && fs.existsSync(process.env[envVar])) {
+    return process.env[envVar];
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+// Wbudowane fonty pdfkit (Helvetica) nie obsługują polskich znaków diakrytycznych.
+function resolveFonts() {
+  const regular = findFont('FONT_REGULAR', [
+    'C:\\Windows\\Fonts\\arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/System/Library/Fonts/Supplemental/Arial.ttf',
+  ]);
+  const bold = findFont('FONT_BOLD', [
+    'C:\\Windows\\Fonts\\arialbd.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+  ]);
+  if (!regular || !bold) {
+    throw new Error(
+      'Nie znaleziono fontu z obsługą polskich znaków. Ustaw zmienne środowiskowe ' +
+      'FONT_REGULAR i FONT_BOLD na ścieżki do plików .ttf (np. Arial lub DejaVu Sans).'
+    );
+  }
+  return { regular, bold };
+}
+
+async function fetchData() {
+  const config = {
+    server: process.env.MSSQL_HOST || '127.0.0.1',
+    port: parseInt(process.env.MSSQL_PORT || '14330', 10),
+    database: process.env.MSSQL_DATABASE || 'RetailDW',
+    user: process.env.MSSQL_SA_USER || 'sa',
+    password: process.env.MSSQL_SA_PASSWORD || 'Workshop_Dev2026#',
+    options: { encrypt: false, trustServerCertificate: true },
+  };
+
+  const queryText = fs.readFileSync(QUERY_FILE, 'utf8');
+  const pool = await sql.connect(config);
+  try {
+    const result = await pool.request().query(queryText);
+    const [meta, summary, changes, growth, decline, channels] = result.recordsets;
+    return {
+      meta: meta[0],
+      summary: summary[0],
+      changes,
+      growth,
+      decline,
+      channels,
+    };
+  } finally {
+    await pool.close();
+  }
+}
+
+function pct(value) {
+  if (value === null || value === undefined) return 'b/d';
+  const sign
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 243-255 @@
+
+```
+ensureDependencies();
+  fs.mkdirSync(args.out, { recursive: true });
+
+  const data = await fetchData();
+
+  if (args.pdf) {
+    const fonts = resolveFonts();
+    const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
+    await buildPdf(data, pdfPath, fonts);
+    console.log(`PDF:   ${pdfPath}`);
+  }
+
+  if (args.xlsx) {
+    const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+    await buildExcel(data, xlsxPath);
+    console.log(`Excel: ${xlsxPath}`);
+  }
+```
+
+@@ lines 3-36 @@
+
+```
+: PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) i/lub proste zestawienie tabel w Excelu —
+ * na żądanie, przez flagi CLI.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Pierwsze uruchomienie: skrypt sam wykrywa brak node_modules i uruchamia
+ * `npm install` w tym folderze — nie trzeba nic instalować ręcznie.
+ *
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--pdf] [--xlsx] [--out <folder>]
+ *   (bez --pdf/--xlsx generowane są oba formaty)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+// Wypełniane przez ensureDependencies() po weryfikacji/instalacji node_modules.
+let sql, PDFDocument, ExcelJS;
+
+function ensureDependencies() {
+  const nodeModulesPath = path.join(SCRIPT_DIR, 'node_modules');
+  const required = ['mssql', 'pdfkit', 'exceljs'];
+  const missing = required.some((pkg) => !fs.existsSync(path.join(nodeModulesPath, pkg)));
+
+  if (missing) {
+    console.log('Pierwsze uruchomienie — brak zależności, instaluję (npm install)...');
+    const result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true });
+    if (result.status !== 0) {
+      throw new Error(`npm install nie powiodło się. Uruchom ręcznie "npm install" w ${SCRIPT_DIR}`);
+    }
+  }
+
+  sql = require('mssql');
+  PDFDocument = require('pdfkit');
+  ExcelJS = require('exceljs');
+}
+
+function parseArgs(argv) {
+  const args = { out: path.join(SCRIPT_DIR, 'out'), pdf: false, xlsx: false };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--out' && argv[i + 1]) {
+      args.out = path.resolve(argv[i + 1]);
+      i++;
+    } else if (argv[i] === '--pdf') {
+      args.pdf = true;
+    } else if (argv[i] === '--xlsx' || argv[i] === '--excel') {
+      args.xlsx = true;
+    }
+  }
+  // Bez jawnych flag generujemy oba formaty (dotychczasowe zachowanie).
+  if (!args.pdf && !args.xlsx) {
+    args.pdf = true;
+    args.xlsx = true;
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`, lines 1 to 70
+
+**Input:**
+
+- endLine: `70`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `1`
+
+**Result:**
+
+```
+#!/usr/bin/env node
+/*
+ * Generuje poniedziałkowy przegląd handlowy: PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) i/lub proste zestawienie tabel w Excelu —
+ * na żądanie, przez flagi CLI.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Pierwsze uruchomienie: skrypt sam wykrywa brak node_modules i uruchamia
+ * `npm install` w tym folderze — nie trzeba nic instalować ręcznie.
+ *
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--pdf] [--xlsx] [--out <folder>]
+ *   (bez --pdf/--xlsx generowane są oba formaty)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+// Wypełniane przez ensureDependencies() po weryfikacji/instalacji node_modules.
+let sql, PDFDocument, ExcelJS;
+
+function ensureDependencies() {
+  const nodeModulesPath = path.join(SCRIPT_DIR, 'node_modules');
+  const required = ['mssql', 'pdfkit', 'exceljs'];
+  const missing = required.some((pkg) => !fs.existsSync(path.join(nodeModulesPath, pkg)));
+
+  if (missing) {
+    console.log('Pierwsze uruchomienie — brak zależności, instaluję (npm install)...');
+    const result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true });
+    if (result.status !== 0) {
+      throw new Error(`npm install nie powiodło się. Uruchom ręcznie "npm install" w ${SCRIPT_DIR}`);
+    }
+  }
+
+  sql = require('mssql');
+  PDFDocument = require('pdfkit');
+  ExcelJS = 
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now let's test it end-to-end, including the auto-install path from a clean `node_modules`:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Test auto-install of dependencies on first run, generating only the PDF
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf node_modules out && node generate-report.js --pdf
+```
+
+**Result:**
+
+```
+Pierwsze uruchomienie — brak zależności, instaluję (npm install)...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated fstream@1.0.12: This package is no longer supported.
+npm warn deprecated jpeg-exif@1.1.4: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated crypto-js@4.2.0: Active development of CryptoJS has been discontinued. This library is no longer maintained.
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 244 packages, and audited 245 packages in 17s
+
+61 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+(node:10324) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PDF:   C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-20
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Let's confirm `--xlsx` works too, and remove the shell warning by testing without `shell: true` (Windows needs it for `npm.cmd` resolution, but let's verify):
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Test the --xlsx-only flag now that dependencies are installed
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node generate-report.js --xlsx
+```
+
+**Result:**
+
+```
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 42-42 @@
+
+```
+npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const result = spawnSync(npmCmd, ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit'
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Full clean-slate test: auto-install without shell warning, then generate both PDF and Excel by default
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf node_modules out && node generate-report.js
+```
+
+**Result:**
+
+```
+Pierwsze uruchomienie — brak zależności, instaluję (npm install)...
+npm install nie powiodło się. Uruchom ręcznie "npm install" w C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts
+
+Command exited with code 1
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 42-43 @@
+
+```
+result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Retest with shell:true restored, generating both PDF and Excel by default after auto-install
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf node_modules out && node generate-report.js
+```
+
+**Result:**
+
+```
+The user cancelled the tool call.
+```
+</details></tool-use>
+
+---
+
+_**User (2026-09-22 13:38:49Z)**_
+
+skill should npm install ONLY once if node_modules are not present 
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<think><details><summary>Thought Process</summary>
+Logika już to robi — `ensureDependencies()` sprawdza czy `node_modules` zawiera wymagane pakiety i instaluje tylko gdy ich brakuje. Zweryfikuję to end-to-end:
+</details></think>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `.gitignore`
+
+**Input:**
+
+- endLine: `20`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\.gitignore`
+- startLine: `1`
+
+**Result:**
+
+```
+scripts/node_modules
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`, lines 30 to 50
+
+**Input:**
+
+- endLine: `50`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `30`
+
+**Result:**
+
+```
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+// Wypełniane przez ensureDependencies() po weryfikacji/instalacji node_modules.
+let sql, PDFDocument, ExcelJS;
+
+function ensureDependencies() {
+  const nodeModulesPath = path.join(SCRIPT_DIR, 'node_modules');
+  const required = ['mssql', 'pdfkit', 'exceljs'];
+  const missing = required.some((pkg) => !fs.existsSync(path.join(nodeModulesPath, pkg)));
+
+  if (missing) {
+    console.log('Pierwsze uruchomienie — brak zależności, instaluję (npm install)...');
+    const result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true });
+    if (result.status !== 0) {
+      throw new Error(`npm install nie powiodło się. Uruchom ręcznie "npm install" w ${SCRIPT_DIR}`);
+    }
+  }
+
+  sql = require('mssql');
+  PDFDocument = require('pdfkit');
+  ExcelJS = require('exceljs');
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Logika już to robi —  sprawdza czy `node_modules` zawiera wymagane pakiety i instaluje tylko gdy ich brakuje. Zweryfikuję to end-to-end:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Clean slate: remove node_modules, output, and lockfile to test first-run install behavior
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf node_modules out package-lock.json
+```
+
+**Result:**
+
+```
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+First run: expect npm install to trigger since node_modules is missing
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node generate-report.js
+```
+
+**Result:**
+
+```
+Pierwsze uruchomienie — brak zależności, instaluję (npm install)...
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated fstream@1.0.12: This package is no longer supported.
+npm warn deprecated jpeg-exif@1.1.4: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated crypto-js@4.2.0: Active development of CryptoJS has been discontinued. This library is no longer maintained.
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 244 packages, and audited 245 packages in 22s
+
+61 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+(node:8420) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PDF:   C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-202
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+First run installs successfully. Now second run — should skip install entirely:
+
+---
+
+_**User (2026-09-22 13:39:52Z)**_
+
+niech pdf zawiera insights - skill musi zobaczyć i ocenic dane nim wygeneruje pdf.
+
+dodaj proste stylowanie i formatowanie (tabelka) do pdf oraz do excel
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`, lines 1 to 80
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="vscode_askQuestions"><details>
+<summary>Tool use: **vscode_askQuestions**</summary>
+
+Analyzing your answers...
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 20-21 @@
+
+```
+Insights: sekcja "Insights & Decyzje" w PDF wymaga interpretacji danych
+ * przez analityka/agenta (SQL sam z siebie jej nie da — patrz SKILL.md).
+ * Przekaż gotowe punkty plikiem JSON: { "insights": ["punkt 1", "punkt 2"] }.
+ * Bez --insights sekcja zostaje pusta z przypomnieniem do uzupełnienia.
+ *
+ * Użycie:
+ *   node generate-report.js [--pdf] [--xlsx] [--insights <plik.json>
 ```
 </details></tool-use>
