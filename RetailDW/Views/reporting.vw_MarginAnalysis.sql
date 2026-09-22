@@ -1,20 +1,24 @@
 /*
-    Author:      Mateusz Kulesza <ev45ive@gmail.com>
-    AI model:    Claude Sonnet 5
-    Created:     2026-09-21
-    Description: Product-level margin (revenue minus cost).
+    Margin by style and month, calculated from the sold lines.
 
-    Change log:
-    - 2026-09-21 | Ticket: N/A | Mateusz Kulesza | Claude Sonnet 5 | Initial version
+    Used by the merchandising margin review.
 */
 CREATE VIEW [reporting].[vw_MarginAnalysis]
 AS
-SELECT  p.[ProductKey],
-        p.[ProductName],
-        p.[CategoryName],
-        SUM(fi.[LineTotal])              AS [Revenue],
-        SUM(fi.[Quantity] * p.[UnitCost]) AS [Cost],
-        SUM(fi.[LineTotal]) - SUM(fi.[Quantity] * p.[UnitCost]) AS [Margin]
-FROM    [dbo].[FactSalesItem] AS fi
-JOIN    [dbo].[DimProduct]    AS p ON p.[ProductKey] = fi.[ProductKey]
-GROUP BY p.[ProductKey], p.[ProductName], p.[CategoryName];
+SELECT  d.[YearMonth],
+        p.[StyleCode],
+        p.[StyleName],
+        p.[Department],
+        p.[Category],
+        SUM(f.[Quantity])                   AS [Units],
+        SUM(f.[NetAmount])                  AS [NetRevenue],
+        SUM(f.[Quantity] * f.[UnitCost])    AS [CostAmount],
+        SUM(f.[NetAmount]) - SUM(f.[Quantity] * f.[UnitCost]) AS [GrossMargin],
+        CASE WHEN SUM(f.[NetAmount]) = 0 THEN NULL
+             ELSE CAST(100.0 * (SUM(f.[NetAmount]) - SUM(f.[Quantity] * f.[UnitCost]))
+                       / SUM(f.[NetAmount]) AS DECIMAL (5, 2))
+        END                                 AS [GrossMarginPct]
+FROM    [dbo].[FactSales]  AS f
+JOIN    [dbo].[DimDate]    AS d ON d.[DateKey]    = f.[DateKey]
+JOIN    [dbo].[DimProduct] AS p ON p.[ProductKey] = f.[ProductKey]
+GROUP BY d.[YearMonth], p.[StyleCode], p.[StyleName], p.[Department], p.[Category];

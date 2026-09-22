@@ -3,43 +3,33 @@ Post-deployment script
 ----------------------
 Runs AFTER the schema diff is applied.
 
-Responsibilities:
-  1. Seed / refresh reference (dimension) data.
-  2. Run data migrations for this release.
-  3. Append one row to [dbo].[DeploymentHistory].
+  1. Seeds the dimensions.
+  2. Prepares the landing zone ([src]).
+  3. Runs the three load procedures so the warehouse is queryable.
 
-Keep every statement idempotent - this script runs on every publish.
-
-Change log:
-- 2026-08-24 | Ticket: DPO-1204 | Mateusz Kulesza | Claude Sonnet 5 | Record the
-  SnapshotID backfill in DeploymentHistory. NOTE: the actual ADD/backfill/NOT NULL
-  work for SnapshotID runs in Scripts/PreDeployment.sql, not here - it must
-  complete before the schema diff enforces NOT NULL, which happens between Pre-
-  and PostDeployment.
+Every step is guarded, so publishing an already-populated database is a no-op.
 */
 PRINT N'[PostDeployment] start';
 GO
 
-:r .\Seed\DimProduct.sql
+:r .\Seed\00-DimDate.sql
 GO
 
-:r .\Seed\DimStore.sql
+:r .\Seed\01-DimProduct.sql
 GO
 
--- ---------------------------------------------------------------------------
--- Deployment audit
--- ---------------------------------------------------------------------------
-IF NOT EXISTS (SELECT 1 FROM [dbo].[DeploymentHistory] WHERE [ScriptName] = N'baseline')
+:r .\Seed\02-DimStore.sql
+GO
+
+:r .\Seed\10-GenerateSourceData.sql
+GO
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[FactSales])
 BEGIN
-    INSERT INTO [dbo].[DeploymentHistory] ([ScriptName], [Notes])
-    VALUES (N'baseline', N'Initial RetailDW schema: dimensions, temporal FactSales, staging, ETL.');
-END
-GO
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[DeploymentHistory] WHERE [ScriptName] = N'DPO-1204-backfill-snapshotid')
-BEGIN
-    INSERT INTO [dbo].[DeploymentHistory] ([ScriptName], [Notes])
-    VALUES (N'DPO-1204-backfill-snapshotid', N'Added SnapshotID to dbo.FactSales/dbo.FactSalesHistory (NOT NULL, no default); existing rows backfilled with SnapshotID = LoadId in Scripts/PreDeployment.sql.');
+    PRINT N'  running the load procedures';
+    EXEC [etl].[LoadSales];
+    EXEC [etl].[LoadInventory];
+    EXEC [etl].[LoadReturns];
 END
 GO
 

@@ -1,7 +1,7 @@
 ---
 description: "Use when reviewing, triaging, or writing clarification questions for an incoming data/analytics ticket. Defines the checklist for what a well-formed ticket should contain before work starts."
 name: "Ticket Clarification Checklist"
-applyTo: "exercises/tickets/**"
+applyTo: "zgloszenia/**"
 ---
 # Ticket Quality Checklist
 

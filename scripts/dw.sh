@@ -1,18 +1,15 @@
 #!/usr/bin/env bash
 #
-# RetailDW workshop helper.
+# RetailDW local environment helper.
 #
 #   ./scripts/dw.sh up        start the SQL Server container
 #   ./scripts/dw.sh build     build the database project (produces the dacpac)
 #   ./scripts/dw.sh publish   publish the dacpac to the local container
-#   ./scripts/dw.sh seed [batch] [target]  truncate + load staging data (target: sales default, items, customers); batch applies to sales/customers
-#   ./scripts/dw.sh etl [target]  run the load procedure for the given target (sales default, items, customers)
+#   ./scripts/dw.sh reset     drop the database and rebuild it from scratch, including all sample data
 #   ./scripts/dw.sh smoke     run the smoke test
-#   ./scripts/dw.sh regression <ticket-id>  load data/<ticket-id>-seed.sql, run tests/<ticket-id>-regression.sql
-#   ./scripts/dw.sh reset     drop and rebuild the database from scratch
-#   ./scripts/dw.sh diff      generate a deploy diff script from the dacpac vs the target database
 #   ./scripts/dw.sh sql "..." run an ad-hoc query
-#   ./scripts/dw.sh baseline  up + build + publish + seed + etl + smoke
+#   ./scripts/dw.sh diff      generate a deploy diff script from the dacpac vs the target database
+#   ./scripts/dw.sh baseline  up + build + publish + smoke
 #   ./scripts/dw.sh wsl-memory [GB]  ensure WSL2 has enough memory for SQL Server (default 3GB)
 #
 set -euo pipefail
@@ -128,61 +125,7 @@ cmd_diff() { # cmd_diff [outfile] - dacpac (source) vs target database (target),
   echo "diff script written to ${1:-$ROOT/analyses/diff.sql}"
 }
 
-cmd_seed() { # cmd_seed [batch] [target] - target: sales (default, data/0<batch>-staging-batch-<batch>.sql), items (data/03-staging-salesitems-batch-1.sql) or customers (data/0<3+batch>-staging-customers-batch-<batch>.sql)
-  local batch="${1:-1}"
-  local target="${2:-sales}"
-  case "$target" in
-    sales) f "$DB" "$ROOT/data/0${batch}-staging-batch-${batch}.sql" ;;
-    items) f "$DB" "$ROOT/data/03-staging-salesitems-batch-1.sql" ;;
-    returns) f "$DB" "$ROOT/data/06-staging-returns-batch-1.sql" ;;
-    inventory)
-      case "$batch" in
-        1) f "$DB" "$ROOT/data/07-staging-inventory-batch-1.sql" ;;
-        2) f "$DB" "$ROOT/data/08-staging-inventory-batch-2.sql" ;;
-        *) echo "unknown inventory batch: $batch (expected 1|2)" >&2; return 1 ;;
-      esac
-      ;;
-    dataquality) f "$DB" "$ROOT/data/09-dataquality-seed.sql" ;;
-    customers)
-      case "$batch" in
-        1) f "$DB" "$ROOT/data/04-staging-customers-batch-1.sql" ;;
-        2) f "$DB" "$ROOT/data/05-staging-customers-batch-2.sql" ;;
-        *) echo "unknown customers batch: $batch (expected 1|2)" >&2; return 1 ;;
-      esac
-      ;;
-    *) echo "unknown seed target: $target (expected sales|items|returns|inventory|dataquality|customers)" >&2; return 1 ;;
-  esac
-}
-
-cmd_etl() { # cmd_etl [target] - target: sales (default, etl.LoadFactSales), items (etl.LoadFactSalesItem), returns (etl.LoadReturns), inventory (etl.LoadInventorySnapshot) or customers (etl.LoadCustomers)
-  local target="${1:-sales}"
-  local proc source
-  case "$target" in
-    sales)     proc="etl.LoadFactSales";          source="POS" ;;
-    items)     proc="etl.LoadFactSalesItem";      source="POS" ;;
-    returns)   proc="etl.LoadReturns";            source="POS" ;;
-    inventory) proc="etl.LoadInventorySnapshot";  source="WMS" ;;
-    customers) proc="etl.LoadCustomers";          source="CRM" ;;
-    *) echo "unknown etl target: $target (expected sales|items|returns|inventory|customers)" >&2; return 1 ;;
-  esac
-  q "$DB" "DECLARE @l INT;
-           EXEC $proc @SourceSystem = N'$source', @LoadId = @l OUTPUT;
-           SELECT LoadId, PackageName, Status, RowsInserted, RowsUpdated, RowsRejected
-           FROM dbo.LoadLog ORDER BY LoadId;"
-}
-
 cmd_smoke() { f "$DB" "$ROOT/tests/smoke-test.sql"; }
-
-cmd_regression() { # cmd_regression <ticket-id> - load data/<ticket-id>-seed.sql, run etl, then run tests/<ticket-id>-regression.sql
-  local ticket="${1:?usage: dw.sh regression <ticket-id>}"
-  local seed="$ROOT/data/${ticket}-seed.sql"
-  local test="$ROOT/tests/${ticket}-regression.sql"
-  [ -f "$seed" ] || { echo "missing $seed" >&2; return 1; }
-  [ -f "$test" ] || { echo "missing $test" >&2; return 1; }
-  f "$DB" "$seed"
-  cmd_etl
-  f "$DB" "$test"
-}
 
 cmd_reset() {
   # sa's default database can end up pointing at $DB; repoint it first so a
@@ -201,8 +144,6 @@ cmd_baseline() {
   cmd_up
   cmd_build
   cmd_publish
-  cmd_seed
-  cmd_etl
   cmd_smoke
 }
 
@@ -210,14 +151,11 @@ case "${1:-}" in
   up)       cmd_up ;;
   build)    cmd_build ;;
   publish)  cmd_publish ;;
-  seed)     cmd_seed "${2:-}" "${3:-}" ;;
-  etl)      cmd_etl "${2:-}" ;;
   smoke)    cmd_smoke ;;
-  regression) cmd_regression "${2:-}" ;;
   reset)    cmd_reset ;;
   diff)     cmd_diff "${2:-}" ;;
   baseline) cmd_baseline ;;
   sql)      q "$DB" "${2:?usage: dw.sh sql \"<query>\"}" ;;
   wsl-memory) cmd_wsl_memory "${2:-}" ;;
-  *)        sed -n '3,15p' "${BASH_SOURCE[0]}" ; exit 1 ;;
+  *)        sed -n '3,13p' "${BASH_SOURCE[0]}" ; exit 1 ;;
 esac

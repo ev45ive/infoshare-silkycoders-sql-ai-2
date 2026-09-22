@@ -12,7 +12,7 @@ Loop through clarification questions against the ticket, one batch at a time, un
 
 # Setup
 
-1. Read the ticket referenced by the user (path or ID under `exercises/tickets/`).
+1. Read the ticket referenced by the user (path or ID under `zgloszenia/`).
 2. Determine `<date>` (current date, `YYYY-MM-DD`) and `<ticket-id>`.
 3. Immediately create `docs/meetings/<date>-<ticket-id>-session.md` following [meeting-notes.instructions.md](../instructions/meeting-notes.instructions.md) and the Output Format below. Fill the checklist using [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md) and list the initial open questions.
 

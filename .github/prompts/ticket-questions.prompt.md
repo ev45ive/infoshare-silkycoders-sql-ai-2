@@ -12,7 +12,7 @@ Produce a clarification report for the ticket so open questions can be resolved 
 
 # Instructions
 
-1. **Read the ticket** referenced by the user (path or ID under `exercises/tickets/`).
+1. **Read the ticket** referenced by the user (path or ID under `zgloszenia/`).
 2. **Checklist the ticket** against the quality checklist defined in [ticket-clarification.instructions.md](../instructions/ticket-clarification.instructions.md).
 3. **Search the codebase** for related tables, views, procedures, or docs that could already answer the request (check `RetailDW/Tables`, `RetailDW/Views`, `RetailDW/Procedures`, `docs/`).
 4. **Identify conflicts or gaps**, e.g. contradictory definitions between docs and existing views.
