@@ -3256,3 +3256,1488 @@ albo naturalnym językiem: „zrób raport poniedziałkowy za zeszły tydzień".
 - Można dodać automatyzację (SQL Agent Job / harmonogram), jeśli chcecie, żeby raport generował się bez ręcznego wywołania co poniedziałek.
 
 Czy nazwa `poniedzialkowy-raport-handlowy` i podział plików Ci odpowiada, czy coś doprecyzować?
+
+---
+
+_**User (2026-09-22 13:24:10Z)**_
+
+czy masz dostępnego python albo node js ?
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` python --version 2>&1; python3 --version 2>&1; node --version 2>&1; npm --ve...`
+
+Check availability of Python and Node.js in the terminal
+
+```bash
+python --version 2>&1; python3 --version 2>&1; node --version 2>&1; npm --version 2>&1
+```
+
+**Result:**
+
+```
+Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+v24.19.0
+11.17.0
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Python nie jest dostępny. Node.js jest — wersja **v24.19.0** (npm 11.17.0).
+
+---
+
+_**User (2026-09-22 13:25:41Z)**_
+
+dodaj do skilla skrypt generujący raport wg szablonu w postaci PDF oraz tabelki w postaci prostego excela
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `docker-compose.yml`
+
+**Input:**
+
+- endLine: `60`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\docker-compose.yml`
+- startLine: `1`
+
+**Result:**
+
+```
+##############################################################################
+# Local SQL Server for the RetailDW workshop.
+#
+# The port is bound to 127.0.0.1 only - the instance is never reachable from
+# the network. The password below is a throwaway development credential; it
+# must never be reused for anything else.
+#
+# Override it if you like:   $env:MSSQL_SA_PASSWORD="..."; docker compose up -d
+##############################################################################
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: retaildw-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      # SQL Server 2025 renamed the free Developer PID; "Developer" is no longer valid.
+      MSSQL_PID: EnterpriseDeveloper
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:[REDACTED:generic-password]"
+    ports:
+      - "127.0.0.1:14330:1433"
+    volumes:
+      - ./mssql.conf:/var/opt/mssql/mssql.conf:ro
+      - retaildw-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  retaildw-data:
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` npm config get registry && node -e "require\('https'\).get\('https://registry.n...`
+
+Check npm registry access to confirm we can install packages
+
+```bash
+npm config get registry && node -e "require('https').get('https://registry.npmjs.org/mssql', r => console.log('status', r.statusCode)).on('error', e => console.log('ERR', e.message))"
+```
+
+**Result:**
+
+```
+https://registry.npmjs.org/
+status 200
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.sql`, lines 1 to 180
+
+**Input:**
+
+- endLine: `180`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.sql`
+- startLine: `1`
+
+**Result:**
+
+```
+-- ============================================================================
+-- PONIEDZIAŁKOWY PRZEGLĄD HANDLOWY — AUTOMATYCZNE PODSUMOWANIE
+-- Wykonanie: Co poniedziałek (lub wtorek) o 09:00
+-- Logika: Raporty na dni 1-2 tygodnia (Pn-Wt) pokazują poprzedni pełny tydzień
+-- ============================================================================
+
+DECLARE @CurrentWeek  NVARCHAR(10);
+DECLARE @PreviousWeek NVARCHAR(10);
+DECLARE @PreviousYearWeek NVARCHAR(10);
+
+-- ============================================================================
+-- CALCULATE REPORTING WEEKS
+-- ============================================================================
+
+DECLARE @TodayDayOfWeek TINYINT;  -- ISO format: Monday=1
+DECLARE @ReportWeekIsoYear SMALLINT;
+DECLARE @ReportWeekIsoWeek TINYINT;
+
+SELECT @TodayDayOfWeek = [DayOfWeek]
+FROM [dbo].[DimDate]
+WHERE [Date] = CAST(GETDATE() AS DATE);
+
+-- If Monday (1) or Tuesday (2): report on previous complete week
+-- Otherwise: report on current week
+IF @TodayDayOfWeek IN (1, 2)
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek] - 1
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+    
+    -- Handle year boundary (week 0 -> week 52 of previous year)
+    IF @ReportWeekIsoWeek = 0
+    BEGIN
+        SET @ReportWeekIsoYear = @ReportWeekIsoYear - 1;
+        SET @ReportWeekIsoWeek = 52;
+    END
+END
+ELSE
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek]
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+END
+
+SET @CurrentWeek = CONCAT(@ReportWeekIsoYear, '-W', RIGHT('0' + CAST(@ReportWeekIsoWeek AS VARCHAR(2)), 2));
+SET @PreviousWeek = CONCAT(
+    @ReportWeekIsoYear, '-W', 
+    RIGHT('0' + CAST(CASE WHEN @ReportWeekIsoWeek = 1 THEN 52 ELSE @ReportWeekIsoWeek - 1 END AS VARCHAR(2)), 2)
+);
+SET @PreviousYearWeek = CONCAT(@ReportWeekIsoYear - 1, '-W', RIGHT('0' + CAST(@ReportWeekIsoW
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2 && cat .gitignore 2>/de...`
+
+Check if .gitignore exists and whether node_modules is already ignored
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2 && cat .gitignore 2>/dev/null | head -30; echo "---"; test -f .gitignore && echo "gitignore exists" || echo "no gitignore"
+```
+
+**Result:**
+
+```
+
+RetailDW/bin
+RetailDW/obj
+.tessdata/
+.vs/*
+---
+gitignore exists
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` powershell -NoProfile -Command "Test-Path 'C:\\Windows\\Fonts\\arial.ttf'; Test...`
+
+Check if standard Arial TTF fonts (with Polish diacritics support) exist on this Windows machine for PDF embedding
+
+```bash
+powershell -NoProfile -Command "Test-Path 'C:\Windows\Fonts\arial.ttf'; Test-Path 'C:\Windows\Fonts\arialbd.ttf'"
+```
+
+**Result:**
+
+```
+True
+True
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `query-data.sql`
+
+**Input:**
+
+- content:
+
+```
+-- ============================================================================
+-- PONIEDZIAŁKOWY PRZEGLĄD HANDLOWY — dane surowe dla generate-report.js
+-- Ten plik zwraca 6 recordsetów (bez PRINT/formatowania tekstowego) do
+-- konsumpcji przez skrypt Node.js budujący PDF/Excel.
+-- Logika wyboru tygodnia identyczna jak w generate-report.sql.
+-- ============================================================================
+
+DECLARE @CurrentWeek  NVARCHAR(10);
+DECLARE @PreviousWeek NVARCHAR(10);
+DECLARE @PreviousYearWeek NVARCHAR(10);
+
+DECLARE @TodayDayOfWeek TINYINT;  -- ISO format: Monday=1
+DECLARE @ReportWeekIsoYear SMALLINT;
+DECLARE @ReportWeekIsoWeek TINYINT;
+
+SELECT @TodayDayOfWeek = [DayOfWeek]
+FROM [dbo].[DimDate]
+WHERE [Date] = CAST(GETDATE() AS DATE);
+
+IF @TodayDayOfWeek IN (1, 2)
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek] - 1
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+
+    IF @ReportWeekIsoWeek = 0
+    BEGIN
+        SET @ReportWeekIsoYear = @ReportWeekIsoYear - 1;
+        SET @ReportWeekIsoWeek = 52;
+    END
+END
+ELSE
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek]
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+END
+
+SET @CurrentWeek = CONCAT(@ReportWeekIsoYear, '-W', RIGHT('0' + CAST(@ReportWeekIsoWeek AS VARCHAR(2)), 2));
+SET @PreviousWeek = CONCAT(
+    @ReportWeekIsoYear, '-W',
+    RIGHT('0' + CAST(CASE WHEN @ReportWeekIsoWeek = 1 THEN 52 ELSE @ReportWeekIsoWeek - 1 END AS VARCHAR(2)), 2)
+);
+SET @PreviousYearWeek = CONCAT(@ReportWeekIsoYear - 1, '-W', RIGHT('0' + CAST(@ReportWeekIsoWeek AS VARCHAR(2)), 2));
+
+-- RECORDSET 0: metadata o okresie
+SELECT
+    @CurrentWeek       AS [CurrentWeek],
+    @PreviousWeek      AS [PreviousWeek],
+    @PreviousYearWeek  AS [PreviousYearWeek],
+    MIN([WeekStart])   AS [WeekStart],
+    MAX([WeekEnd])     AS [WeekEnd]
+FROM [reporting].[vw_SalesWeekly]
+WHERE [YearWeek] = @CurrentWeek;
+
+-- RECORDSET 1: podsumowanie wykonania (wartości surowe)
+SELECT
+    SUM([NetAmount])                                          AS [NetAmount],
+    SUM([Transactions])                                       AS [Transactions],
+    SUM([NetAmount]) / NULLIF(SUM([Transactions]), 0)         AS [AvgBasket]
+FROM [reporting].[vw_SalesWeekly]
+WHERE [YearWeek] = @CurrentWeek;
+
+-- RECORDSET 2: zmiana WoW i YoY
+WITH sales_by_week AS (
+    SELECT [YearWeek], SUM([NetAmount]) AS [NetAmount]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek, @PreviousYearWeek)
+    GROUP BY [YearWeek]
+)
+SELECT
+    'WoW' AS [Label],
+    @PreviousWeek AS [ComparedTo],
+    ROUND(100.0 * (
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @CurrentWeek) -
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousWeek)
+    ) / NULLIF((SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousWeek), 0), 1) AS [PctChange]
+UNION ALL
+SELECT
+    'YoY',
+    @PreviousYearWeek,
+    ROUND(100.0 * (
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @CurrentWeek) -
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousYearWeek)
+    ) / NULLIF((SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousYearWeek), 0), 1);
+
+-- RECORDSET 3: top rosnące kategorie (Top 5, tylko realny wzrost)
+WITH category_changes AS (
+    SELECT
+        [Category],
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek)
+    GROUP BY [Category], [Channel]
+)
+SELECT TOP 5
+    [Category],
+    [Channel],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1) AS [PctChange]
+FROM category_changes
+WHERE [PreviousWeek] > 0 AND [CurrentWeek] > [PreviousWeek]
+ORDER BY [CurrentWeek] - [PreviousWeek] DESC;
+
+-- RECORDSET 4: top spadające kategorie (Top 5, tylko realny spadek)
+WITH category_changes AS (
+    SELECT
+        [Category],
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek)
+    GROUP BY [Category], [Channel]
+)
+SELECT TOP 5
+    [Category],
+    [Channel],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1) AS [PctChange]
+FROM category_changes
+WHERE [PreviousWeek] > 0 AND [CurrentWeek] < [PreviousWeek]
+ORDER BY [CurrentWeek] - [PreviousWeek] ASC;
+
+-- RECORDSET 5: porównanie kanałów
+WITH channel_sales AS (
+    SELECT
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousYearWeek THEN [NetAmount] ELSE 0 END) AS [PreviousYear]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek, @PreviousYearWeek)
+    GROUP BY [Channel]
+)
+SELECT
+    [Channel],
+    [CurrentWeek]                                                                        AS [NetAmount],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1)        AS [WowPct],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousYear]) / NULLIF([PreviousYear], 0), 1)        AS [YoyPct]
+FROM channel_sales
+ORDER BY [CurrentWeek] DESC;
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\query-data.sql`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\query-data.sql
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **query-data.sql**</summary>
+
+@@ lines 1-1 @@
+
+```
+-- ============================================================================
+-- PONIEDZIAŁKOWY PRZEGLĄD HANDLOWY — dane surowe dla generate-report.js
+-- Ten plik zwraca 6 recordsetów (bez PRINT/formatowania tekstowego) do
+-- konsumpcji przez skrypt Node.js budujący PDF/Excel.
+-- Logika wyboru tygodnia identyczna jak w generate-report.sql.
+-- ============================================================================
+
+DECLARE @CurrentWeek  NVARCHAR(10);
+DECLARE @PreviousWeek NVARCHAR(10);
+DECLARE @PreviousYearWeek NVARCHAR(10);
+
+DECLARE @TodayDayOfWeek TINYINT;  -- ISO format: Monday=1
+DECLARE @ReportWeekIsoYear SMALLINT;
+DECLARE @ReportWeekIsoWeek TINYINT;
+
+SELECT @TodayDayOfWeek = [DayOfWeek]
+FROM [dbo].[DimDate]
+WHERE [Date] = CAST(GETDATE() AS DATE);
+
+IF @TodayDayOfWeek IN (1, 2)
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek] - 1
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+
+    IF @ReportWeekIsoWeek = 0
+    BEGIN
+        SET @ReportWeekIsoYear = @ReportWeekIsoYear - 1;
+        SET @ReportWeekIsoWeek = 52;
+    END
+END
+ELSE
+BEGIN
+    SELECT @ReportWeekIsoYear = [IsoYear],
+           @ReportWeekIsoWeek = [IsoWeek]
+    FROM [dbo].[DimDate]
+    WHERE [Date] = CAST(GETDATE() AS DATE);
+END
+
+SET @CurrentWeek = CONCAT(@ReportWeekIsoYear, '-W', RIGHT('0' + CAST(@ReportWeekIsoWeek AS VARCHAR(2)), 2));
+SET @PreviousWeek = CONCAT(
+    @ReportWeekIsoYear, '-W',
+    RIGHT('0' + CAST(CASE WHEN @ReportWeekIsoWeek = 1 THEN 52 ELSE @ReportWeekIsoWeek - 1 END AS VARCHAR(2)), 2)
+);
+SET @PreviousYearWeek = CONCAT(@ReportWeekIsoYear - 1, '-W', RIGHT('0' + CAST(@ReportWeekIsoWeek AS VARCHAR(2)), 2));
+
+-- RECORDSET 0: metadata o okresie
+SELECT
+    @CurrentWeek       AS [CurrentWeek],
+    @PreviousWeek      AS [PreviousWeek],
+    @PreviousYearWeek  AS [PreviousYearWeek],
+    MIN([WeekStart])   AS [WeekStart],
+    MAX([WeekEnd])     AS [WeekEnd]
+FROM [reporting].[vw_SalesWeekly]
+WHERE [YearWeek] = @CurrentWeek;
+
+-- RECORDSET 1: podsumowanie wykonania (wartości surowe)
+SELECT
+    SUM([NetAmount])                                          AS [NetAmount],
+    SUM([Transactions])                                       AS [Transactions],
+    SUM([NetAmount]) / NULLIF(SUM([Transactions]), 0)         AS [AvgBasket]
+FROM [reporting].[vw_SalesWeekly]
+WHERE [YearWeek] = @CurrentWeek;
+
+-- RECORDSET 2: zmiana WoW i YoY
+WITH sales_by_week AS (
+    SELECT [YearWeek], SUM([NetAmount]) AS [NetAmount]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek, @PreviousYearWeek)
+    GROUP BY [YearWeek]
+)
+SELECT
+    'WoW' AS [Label],
+    @PreviousWeek AS [ComparedTo],
+    ROUND(100.0 * (
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @CurrentWeek) -
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousWeek)
+    ) / NULLIF((SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousWeek), 0), 1) AS [PctChange]
+UNION ALL
+SELECT
+    'YoY',
+    @PreviousYearWeek,
+    ROUND(100.0 * (
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @CurrentWeek) -
+        (SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousYearWeek)
+    ) / NULLIF((SELECT [NetAmount] FROM sales_by_week WHERE [YearWeek] = @PreviousYearWeek), 0), 1);
+
+-- RECORDSET 3: top rosnące kategorie (Top 5, tylko realny wzrost)
+WITH category_changes AS (
+    SELECT
+        [Category],
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek)
+    GROUP BY [Category], [Channel]
+)
+SELECT TOP 5
+    [Category],
+    [Channel],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1) AS [PctChange]
+FROM category_changes
+WHERE [PreviousWeek] > 0 AND [CurrentWeek] > [PreviousWeek]
+ORDER BY [CurrentWeek] - [PreviousWeek] DESC;
+
+-- RECORDSET 4: top spadające kategorie (Top 5, tylko realny spadek)
+WITH category_changes AS (
+    SELECT
+        [Category],
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek)
+    GROUP BY [Category], [Channel]
+)
+SELECT TOP 5
+    [Category],
+    [Channel],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1) AS [PctChange]
+FROM category_changes
+WHERE [PreviousWeek] > 0 AND [CurrentWeek] < [PreviousWeek]
+ORDER BY [CurrentWeek] - [PreviousWeek] ASC;
+
+-- RECORDSET 5: porównanie kanałów
+WITH channel_sales AS (
+    SELECT
+        [Channel],
+        SUM(CASE WHEN [YearWeek] = @CurrentWeek THEN [NetAmount] ELSE 0 END) AS [CurrentWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousWeek THEN [NetAmount] ELSE 0 END) AS [PreviousWeek],
+        SUM(CASE WHEN [YearWeek] = @PreviousYearWeek THEN [NetAmount] ELSE 0 END) AS [PreviousYear]
+    FROM [reporting].[vw_SalesWeekly]
+    WHERE [YearWeek] IN (@CurrentWeek, @PreviousWeek, @PreviousYearWeek)
+    GROUP BY [Channel]
+)
+SELECT
+    [Channel],
+    [CurrentWeek]                                                                        AS [NetAmount],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousWeek]) / NULLIF([PreviousWeek], 0), 1)        AS [WowPct],
+    ROUND(100.0 * ([CurrentWeek] - [PreviousYear]) / NULLIF([PreviousYear], 0), 1)        AS [YoyPct]
+FROM channel_sales
+ORDER BY [CurrentWeek] DESC;
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `package.json`
+
+**Input:**
+
+- content:
+
+```
+{
+  "name": "poniedzialkowy-raport-handlowy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generator PDF/Excel dla cyklicznego przeglądu handlowego RetailDW",
+  "type": "commonjs",
+  "scripts": {
+    "generate": "node generate-report.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "mssql": "^11.0.1",
+    "pdfkit": "^0.15.1"
+  }
+}
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\package.json`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\package.json
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **package.json**</summary>
+
+@@ lines 1-1 @@
+
+```
+{
+  "name": "poniedzialkowy-raport-handlowy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generator PDF/Excel dla cyklicznego przeglądu handlowego RetailDW",
+  "type": "commonjs",
+  "scripts": {
+    "generate": "node generate-report.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "mssql": "^11.0.1",
+    "pdfkit": "^0.15.1"
+  }
+}
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read `.gitignore`
+
+**Input:**
+
+- endLine: `50`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.gitignore`
+- startLine: `1`
+
+**Result:**
+
+```
+
+RetailDW/bin
+RetailDW/obj
+.tessdata/
+.vs/*
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
+
+Created `generate-report.js`
+
+**Input:**
+
+- content:
+
+```
+#!/usr/bin/env node
+/*
+ * Generuje poniedziałkowy przegląd handlowy jako PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) oraz proste zestawienie tabel w Excelu.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Wymaga: npm install (w tym samym folderze) przed pierwszym uruchomieniem.
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--out <folder>]
+ */
+
+const fs = require('fs');
+const path = require('path');
+const sql = require('mssql');
+const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+function parseArgs(argv) {
+  const args = { out: path.join(SCRIPT_DIR, 'out') };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--out' && argv[i + 1]) {
+      args.out = path.resolve(argv[i + 1]);
+      i++;
+    }
+  }
+  return args;
+}
+
+function findFont(envVar, candidates) {
+  if (process.env[envVar] && fs.existsSync(process.env[envVar])) {
+    return process.env[envVar];
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+// Wbudowane fonty pdfkit (Helvetica) nie obsługują polskich znaków diakrytycznych.
+function resolveFonts() {
+  const regular = findFont('FONT_REGULAR', [
+    'C:\\Windows\\Fonts\\arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/System/Library/Fonts/Supplemental/Arial.ttf',
+  ]);
+  const bold = findFont('FONT_BOLD', [
+    'C:\\Windows\\Fonts\\arialbd.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+  ]);
+  if (!regular || !bold) {
+    throw new Error(
+      'Nie znaleziono fontu z obsługą polskich znaków. Ustaw zmienne środowiskowe ' +
+      'FONT_REGULAR i FONT_BOLD na ścieżki do plików .ttf (np. Arial lub DejaVu Sans).'
+    );
+  }
+  return { regular, bold };
+}
+
+async function fetchData() {
+  const config = {
+    server: process.env.MSSQL_HOST || '127.0.0.1',
+    port: parseInt(process.env.MSSQL_PORT || '14330', 10),
+    database: process.env.MSSQL_DATABASE || 'RetailDW',
+    user: process.env.MSSQL_SA_USER || 'sa',
+    password: process.env.MSSQL_SA_PASSWORD || 'Workshop_Dev2026#',
+    options: { encrypt: false, trustServerCertificate: true },
+  };
+
+  const queryText = fs.readFileSync(QUERY_FILE, 'utf8');
+  const pool = await sql.connect(config);
+  try {
+    const result = await pool.request().query(queryText);
+    const [meta, summary, changes, growth, decline, channels] = result.recordsets;
+    return {
+      meta: meta[0],
+      summary: summary[0],
+      changes,
+      growth,
+      decline,
+      channels,
+    };
+  } finally {
+    await pool.close();
+  }
+}
+
+function pct(value) {
+  if (value === null || value === undefined) return 'b/d';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${Number(value).toFixed(1)}%`;
+}
+
+function pln(value) {
+  if (value === null || value === undefined) return 'b/d';
+  return `${Number(value).toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN`;
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('pl-PL');
+}
+
+function buildPdf(data, outPath, fonts) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(outPath);
+    doc.pipe(stream);
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+
+    doc.registerFont('Body', fonts.regular);
+    doc.registerFont('Heading', fonts.bold);
+
+    const wow = data.changes.find((c) => c.Label === 'WoW');
+    const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+    doc.font('Heading').fontSize(18).text(`Przegląd handlowy — tydzień ${data.meta.CurrentWeek}`);
+    doc.font('Body').fontSize(10)
+      .text(`Okres: ${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`)
+      .text(`Data raportu: ${new Date().toLocaleString('pl-PL')}`);
+    doc.moveDown();
+
+    doc.font('Heading').fontSize(13).text('Podsumowanie wykonania');
+    doc.font('Body').fontSize(11).text(
+      `Sprzedaż netto ubiegłego tygodnia wyniosła ${pln(data.summary.NetAmount)}, ` +
+      `co stanowi ${pct(wow && wow.PctChange)} zmianę tygodniowo i ${pct(yoy && yoy.PctChange)} rok do roku. ` +
+      `Liczba transakcji: ${data.summary.Transactions ?? 'b/d'}. Średni koszyk: ${pln(data.summary.AvgBasket)}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    function drawTable(title, rows, valueLabel) {
+      doc.font('Heading').fontSize(13).text(title);
+      doc.moveDown(0.3);
+      if (rows.length === 0) {
+        doc.font('Body').fontSize(10).text('Brak pozycji spełniających kryterium w tym tygodniu.');
+      } else {
+        rows.forEach((row) => {
+          doc.font('Body').fontSize(10).text(
+            `${row.Category} (${row.Channel})    ${pct(row.PctChange)}`
+          );
+        });
+      }
+      doc.moveDown();
+    }
+
+    drawTable('Co urosło (Top 5)', data.growth);
+    drawTable('Co spadło (Top 5)', data.decline);
+
+    doc.font('Heading').fontSize(13).text('Kanały — porównanie');
+    doc.moveDown(0.3);
+    data.channels.forEach((row) => {
+      doc.font('Body').fontSize(10).text(
+        `${row.Channel}: ${pln(row.NetAmount)}   WoW ${pct(row.WowPct)}   YoY ${pct(row.YoyPct)}`
+      );
+    });
+    doc.moveDown();
+
+    doc.font('Heading').fontSize(13).text('Insights & Decyzje');
+    doc.font('Body').fontSize(9).fillColor('gray').text(
+      'Sekcja wymaga uzupełnienia przez analityka na podstawie liczb powyżej ' +
+      '(sezonowość, promocje, dostępność towaru) — patrz SKILL.md, krok 4.',
+      { italic: true }
+    );
+    doc.fillColor('black').moveDown(0.5);
+    doc.font('Body').fontSize(11).text('• ______________________________________________');
+    doc.text('• ______________________________________________');
+    doc.text('• ______________________________________________');
+
+    doc.end();
+  });
+}
+
+async function buildExcel(data, outPath) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'poniedzialkowy-raport-handlowy';
+  wb.created = new Date();
+
+  const wow = data.changes.find((c) => c.Label === 'WoW');
+  const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+  const summarySheet = wb.addWorksheet('Podsumowanie');
+  summarySheet.columns = [{ width: 28 }, { width: 20 }];
+  summarySheet.addRows([
+    ['Tydzień', data.meta.CurrentWeek],
+    ['Okres', `${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`],
+    ['Sprzedaż netto (PLN)', Number(data.summary.NetAmount ?? 0)],
+    ['Transakcje', data.summary.Transactions ?? 0],
+    ['Średni koszyk (PLN)', Number(data.summary.AvgBasket ?? 0)],
+    ['Zmiana WoW (%)', wow ? Number(wow.PctChange) : null],
+    ['Zmiana YoY (%)', yoy ? Number(yoy.PctChange) : null],
+  ]);
+  summarySheet.getColumn(1).font = { bold: true };
+
+  function addChangeSheet(name, rows) {
+    const sheet = wb.addWorksheet(name);
+    sheet.columns = [
+      { header: 'Kategoria', key: 'Category', width: 20 },
+      { header: 'Kanał', key: 'Channel', width: 12 },
+      { header: 'Zmiana (%)', key: 'PctChange', width: 14 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    rows.forEach((r) => sheet.addRow({ Category: r.Category, Channel: r.Channel, PctChange: Number(r.PctChange) }));
+  }
+
+  addChangeSheet('Co urosło', data.growth);
+  addChangeSheet('Co spadło', data.decline);
+
+  const channelSheet = wb.addWorksheet('Kanały');
+  channelSheet.columns = [
+    { header: 'Kanał', key: 'Channel', width: 14 },
+    { header: 'Sprzedaż netto (PLN)', key: 'NetAmount', width: 20 },
+    { header: 'WoW (%)', key: 'WowPct', width: 12 },
+    { header: 'YoY (%)', key: 'YoyPct', width: 12 },
+  ];
+  channelSheet.getRow(1).font = { bold: true };
+  data.channels.forEach((r) =>
+    channelSheet.addRow({
+      Channel: r.Channel,
+      NetAmount: Number(r.NetAmount),
+      WowPct: r.WowPct !== null ? Number(r.WowPct) : null,
+      YoyPct: r.YoyPct !== null ? Number(r.YoyPct) : null,
+    })
+  );
+
+  await wb.xlsx.writeFile(outPath);
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  fs.mkdirSync(args.out, { recursive: true });
+
+  const fonts = resolveFonts();
+  const data = await fetchData();
+
+  const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
+  const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+
+  await buildPdf(data, pdfPath, fonts);
+  await buildExcel(data, xlsxPath);
+
+  console.log(`PDF:   ${pdfPath}`);
+  console.log(`Excel: ${xlsxPath}`);
+}
+
+main().catch((err) => {
+  console.error(err.message);
+  process.exit(1);
+});
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 1-1 @@
+
+```
+#!/usr/bin/env node
+/*
+ * Generuje poniedziałkowy przegląd handlowy jako PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) oraz proste zestawienie tabel w Excelu.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Wymaga: npm install (w tym samym folderze) przed pierwszym uruchomieniem.
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--out <folder>]
+ */
+
+const fs = require('fs');
+const path = require('path');
+const sql = require('mssql');
+const PDFDocument = require('pdfkit');
+const ExcelJS = require('exceljs');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+function parseArgs(argv) {
+  const args = { out: path.join(SCRIPT_DIR, 'out') };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--out' && argv[i + 1]) {
+      args.out = path.resolve(argv[i + 1]);
+      i++;
+    }
+  }
+  return args;
+}
+
+function findFont(envVar, candidates) {
+  if (process.env[envVar] && fs.existsSync(process.env[envVar])) {
+    return process.env[envVar];
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+// Wbudowane fonty pdfkit (Helvetica) nie obsługują polskich znaków diakrytycznych.
+function resolveFonts() {
+  const regular = findFont('FONT_REGULAR', [
+    'C:\\Windows\\Fonts\\arial.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/System/Library/Fonts/Supplemental/Arial.ttf',
+  ]);
+  const bold = findFont('FONT_BOLD', [
+    'C:\\Windows\\Fonts\\arialbd.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+    '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+  ]);
+  if (!regular || !bold) {
+    throw new Error(
+      'Nie znaleziono fontu z obsługą polskich znaków. Ustaw zmienne środowiskowe ' +
+      'FONT_REGULAR i FONT_BOLD na ścieżki do plików .ttf (np. Arial lub DejaVu Sans).'
+    );
+  }
+  return { regular, bold };
+}
+
+async function fetchData() {
+  const config = {
+    server: process.env.MSSQL_HOST || '127.0.0.1',
+    port: parseInt(process.env.MSSQL_PORT || '14330', 10),
+    database: process.env.MSSQL_DATABASE || 'RetailDW',
+    user: process.env.MSSQL_SA_USER || 'sa',
+    password: process.env.MSSQL_SA_PASSWORD || 'Workshop_Dev2026#',
+    options: { encrypt: false, trustServerCertificate: true },
+  };
+
+  const queryText = fs.readFileSync(QUERY_FILE, 'utf8');
+  const pool = await sql.connect(config);
+  try {
+    const result = await pool.request().query(queryText);
+    const [meta, summary, changes, growth, decline, channels] = result.recordsets;
+    return {
+      meta: meta[0],
+      summary: summary[0],
+      changes,
+      growth,
+      decline,
+      channels,
+    };
+  } finally {
+    await pool.close();
+  }
+}
+
+function pct(value) {
+  if (value === null || value === undefined) return 'b/d';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${Number(value).toFixed(1)}%`;
+}
+
+function pln(value) {
+  if (value === null || value === undefined) return 'b/d';
+  return `${Number(value).toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN`;
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('pl-PL');
+}
+
+function buildPdf(data, outPath, fonts) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(outPath);
+    doc.pipe(stream);
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+
+    doc.registerFont('Body', fonts.regular);
+    doc.registerFont('Heading', fonts.bold);
+
+    const wow = data.changes.find((c) => c.Label === 'WoW');
+    const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+    doc.font('Heading').fontSize(18).text(`Przegląd handlowy — tydzień ${data.meta.CurrentWeek}`);
+    doc.font('Body').fontSize(10)
+      .text(`Okres: ${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`)
+      .text(`Data raportu: ${new Date().toLocaleString('pl-PL')}`);
+    doc.moveDown();
+
+    doc.font('Heading').fontSize(13).text('Podsumowanie wykonania');
+    doc.font('Body').fontSize(11).text(
+      `Sprzedaż netto ubiegłego tygodnia wyniosła ${pln(data.summary.NetAmount)}, ` +
+      `co stanowi ${pct(wow && wow.PctChange)} zmianę tygodniowo i ${pct(yoy && yoy.PctChange)} rok do roku. ` +
+      `Liczba transakcji: ${data.summary.Transactions ?? 'b/d'}. Średni koszyk: ${pln(data.summary.AvgBasket)}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    function drawTable(title, rows, valueLabel) {
+      doc.font('Heading').fontSize(13).text(title);
+      doc.moveDown(0.3);
+      if (rows.length === 0) {
+        doc.font('Body').fontSize(10).text('Brak pozycji spełniających kryterium w tym tygodniu.');
+      } else {
+        rows.forEach((row) => {
+          doc.font('Body').fontSize(10).text(
+            `${row.Category} (${row.Channel})    ${pct(row.PctChange)}`
+          );
+        });
+      }
+      doc.moveDown();
+    }
+
+    drawTable('Co urosło (Top 5)', data.growth);
+    drawTable('Co spadło (Top 5)', data.decline);
+
+    doc.font('Heading').fontSize(13).text('Kanały — porównanie');
+    doc.moveDown(0.3);
+    data.channels.forEach((row) => {
+      doc.font('Body').fontSize(10).text(
+        `${row.Channel}: ${pln(row.NetAmount)}   WoW ${pct(row.WowPct)}   YoY ${pct(row.YoyPct)}`
+      );
+    });
+    doc.moveDown();
+
+    doc.font('Heading').fontSize(13).text('Insights & Decyzje');
+    doc.font('Body').fontSize(9).fillColor('gray').text(
+      'Sekcja wymaga uzupełnienia przez analityka na podstawie liczb powyżej ' +
+      '(sezonowość, promocje, dostępność towaru) — patrz SKILL.md, krok 4.',
+      { italic: true }
+    );
+    doc.fillColor('black').moveDown(0.5);
+    doc.font('Body').fontSize(11).text('• ______________________________________________');
+    doc.text('• ______________________________________________');
+    doc.text('• ______________________________________________');
+
+    doc.end();
+  });
+}
+
+async function buildExcel(data, outPath) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'poniedzialkowy-raport-handlowy';
+  wb.created = new Date();
+
+  const wow = data.changes.find((c) => c.Label === 'WoW');
+  const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+  const summarySheet = wb.addWorksheet('Podsumowanie');
+  summarySheet.columns = [{ width: 28 }, { width: 20 }];
+  summarySheet.addRows([
+    ['Tydzień', data.meta.CurrentWeek],
+    ['Okres', `${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`],
+    ['Sprzedaż netto (PLN)', Number(data.summary.NetAmount ?? 0)],
+    ['Transakcje', data.summary.Transactions ?? 0],
+    ['Średni koszyk (PLN)', Number(data.summary.AvgBasket ?? 0)],
+    ['Zmiana WoW (%)', wow ? Number(wow.PctChange) : null],
+    ['Zmiana YoY (%)', yoy ? Number(yoy.PctChange) : null],
+  ]);
+  summarySheet.getColumn(1).font = { bold: true };
+
+  function addChangeSheet(name, rows) {
+    const sheet = wb.addWorksheet(name);
+    sheet.columns = [
+      { header: 'Kategoria', key: 'Category', width: 20 },
+      { header: 'Kanał', key: 'Channel', width: 12 },
+      { header: 'Zmiana (%)', key: 'PctChange', width: 14 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    rows.forEach((r) => sheet.addRow({ Category: r.Category, Channel: r.Channel, PctChange: Number(r.PctChange) }));
+  }
+
+  addChangeSheet('Co urosło', data.growth);
+  addChangeSheet('Co spadło', data.decline);
+
+  const channelSheet = wb.addWorksheet('Kanały');
+  channelSheet.columns = [
+    { header: 'Kanał', key: 'Channel', width: 14 },
+    { header: 'Sprzedaż netto (PLN)', key: 'NetAmount', width: 20 },
+    { header: 'WoW (%)', key: 'WowPct', width: 12 },
+    { header: 'YoY (%)', key: 'YoyPct', width: 12 },
+  ];
+  channelSheet.getRow(1).font = { bold: true };
+  data.channels.forEach((r) =>
+    channelSheet.addRow({
+      Channel: r.Channel,
+      NetAmount: Number(r.NetAmount),
+      WowPct: r.WowPct !== null ? Number(r.WowPct) : null,
+      YoyPct: r.YoyPct !== null ? Number(r.YoyPct) : null,
+    })
+  );
+
+  await wb.xlsx.writeFile(outPath);
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  fs.mkdirSync(args.out, { recursive: true });
+
+  const fonts = resolveFonts();
+  const data = await fetchData();
+
+  const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
+  const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+
+  await buildPdf(data, pdfPath, fonts);
+  await buildExcel(data, xlsxPath);
+
+  console.log(`PDF:   ${pdfPath}`);
+  console.log(`Excel: ${xlsxPath}`);
+}
+
+main().catch((err) => {
+  console.error(err.message);
+  process.exit(1);
+});
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now install dependencies and test it end-to-end:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Install Node.js dependencies for the report generator (mssql, pdfkit, exceljs)
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && npm install
+```
+
+**Result:**
+
+```
+npm warn deprecated rimraf@2.7.1: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated lodash.isequal@4.5.0: This package is deprecated. Use require('node:util').isDeepStrictEqual instead.
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated fstream@1.0.12: This package is no longer supported.
+npm warn deprecated jpeg-exif@1.1.4: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+npm warn deprecated crypto-js@4.2.0: Active development of CryptoJS has been discontinued. This library is no longer maintained.
+npm warn deprecated uuid@8.3.2: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+added 244 packages, and audited 245 packages in 32s
+
+61 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Run the report generator against the local SQL Server to produce PDF and Excel files
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node generate-report.js
+```
+
+**Result:**
+
+```
+PDF:   C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38.pdf
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Both files generated. Let me verify the PDF content visually and check the Excel structure:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="open_browser_page"><details>
+<summary>Tool use: **open_browser_page**</summary>
+
+Opened `Browser`
+
+**Input:**
+
+- url: `file:///C:/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts/out/raport-2026-W38.pdf`
+
+**Result:**
+
+```
+Page ID: eed0ae9a-33a3-43d4-a45e-b866054c8428
+
+Summary:
+
+URL: file:///C:/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts/out/raport-2026-W38.pdf
+Snapshot: <unchanged>
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="screenshot_page"><details>
+<summary>Tool use: **screenshot_page**</summary>
+
+Captured browser screenshot
+
+**Input:**
+
+- pageId: `eed0ae9a-33a3-43d4-a45e-b866054c8428`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+PDF renders correctly on a single page with proper Polish diacritics ("Przegląd", "urosło", "spadło"). Let's verify the Excel file:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Read back the generated Excel file to verify its content and sheet structure
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node -e "
+const ExcelJS = require('exceljs');
+const wb = new ExcelJS.Workbook();
+wb.xlsx.readFile('out/raport-2026-W38-tabele.xlsx').then(() => {
+  wb.eachSheet(sheet => {
+    console.log('=== ' + sheet.name + ' ===');
+    sheet.eachRow(row => console.log(row.values.slice(1).join(' | ')));
+  });
+});
+"
+```
+
+**Result:**
+
+```
+=== Podsumowanie ===
+Tydzień | 2026-W38
+Okres | 14.09.2026 – 20.09.2026
+Sprzedaż netto (PLN) | 664752.03
+Transakcje | 1451
+Średni koszyk (PLN) | 458.133721
+Zmiana WoW (%) | -3.9
+Zmiana YoY (%) | 4.3
+=== Co urosło ===
+Kategoria | Kanał | Zmiana (%)
+Swetry | STORE | 18.2
+Kurtki | ONLINE | 13.7
+Swetry | ONLINE | 16.4
+Koszule | STORE | 5.5
+Koszule | ONLINE | 11.1
+=== Co spadło ===
+Kategoria | Kanał | Zmiana (%)
+Kurtki | STORE | -21.6
+Sukienki | STORE | -7.3
+T-shirty | STORE | -7.1
+Jeansy | ONLINE | -2.7
+=== Kanały ===
+Kanał | Sprzedaż netto (PLN) | WoW (%) | YoY (%)
+STORE | 515858.96 | -6.7 | 0.9
+ONLINE | 148893.07 | 7.3 | 18
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Both outputs verified — matches the SQL results exactly. Now let's clean up the generated test output (shouldn't be committed) and update the SKILL.md and .gitignore:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Remove generated test output, node_modules, and lockfile so they aren't committed to the repo
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf out node_modules package-lock.json
+```
+
+**Result:**
+
+```
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Regenerate package-lock.json only (without node_modules) so dependency versions are pinned for future installs
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && npm install --package-lock-only
+```
+
+**Result:**
+
+```
+
+up to date, audited 245 packages in 3s
+
+61 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="list_dir"><details>
+<summary>Tool use: **list_dir**</summary>
+
+Read `scripts`
+
+**Input:**
+
+- path: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts`
+
+**Result:**
+
+```
+generate-report.js
+generate-report.sql
+package-lock.json
+package.json
+query-data.sql
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Good, node_modules stayed removed. Now update `.gitignore` and `SKILL.md`:
+
+---
+
+_**User (2026-09-22 13:34:17Z)**_
+
+gitignore node_modules
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `.gitignore`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **.gitignore**</summary>
+
+@@ lines 5-6 @@
+
+```
+node_modules/
+.github/skills/poniedzialkowy-raport-handlowy/scripts/out/
+```
+</details></tool-use>
