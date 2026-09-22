@@ -12,5 +12,8 @@
         "zgloszenia/**": true,
         "trainer-notes": true,
         "trainer-notes/**": true
+    },
+    "chat.tools.terminal.autoApprove": {
+        "./scripts/dw.sh": true
     }
 }
