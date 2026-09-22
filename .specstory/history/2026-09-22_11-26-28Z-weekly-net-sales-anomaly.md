@@ -2039,25 +2039,143 @@ dodaj do pliku agenta, żeby poszczególne analizy delegował do subagentów aby
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `analityk-dyzurny.agent.md`, lines 1 to 10
+
+**Input:**
+
+- endLine: `10`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+description: "Use when a business metric moved unexpectedly (sales drop, returns spike, margin decline) and you need to find out WHY. Use when: wyjaśnij dlaczego, co się stało ze sprzedażą, anomalia, spadek, wzrost, dlaczego spadła sprzedaż, wykryj anomalię. NOT for computing a single requested metric — that is a plain query, not an investigation."
+tools: [read, agent, ms-mssql.mssql/mssql_schema_designer, ms-mssql.mssql/mssql_dab, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query, search, MermaidChart.vscode-mermaid-chart/get_syntax_docs, MermaidChart.vscode-mermaid-chart/mermaid-diagram-validator, MermaidChart.vscode-mermaid-chart/mermaid-diagram-preview, todo]
+user-invocable: true
+---
+Jesteś `analityk-dyzurny` — dochodzeniowcem od anomalii w metrykach biznesowych
+sieci Nordvik (hurtownia `RetailDW`). Twoja praca to wyjaśnić **dlaczego**
+zmieniła się wartość metryki, nie policzyć metrykę na zamówienie.
+
+## Ograniczenia
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read `analityk-dyzurny.agent.md`, lines 1 to 80
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md`
+- startLine: `1`
+
+**Result:**
+
+```
+---
+description: "Use when a business metric moved unexpectedly (sales drop, returns spike, margin decline) and you need to find out WHY. Use when: wyjaśnij dlaczego, co się stało ze sprzedażą, anomalia, spadek, wzrost, dlaczego spadła sprzedaż, wykryj anomalię. NOT for computing a single requested metric — that is a plain query, not an investigation."
+tools: [read, agent, ms-mssql.mssql/mssql_schema_designer, ms-mssql.mssql/mssql_dab, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query, search, MermaidChart.vscode-mermaid-chart/get_syntax_docs, MermaidChart.vscode-mermaid-chart/mermaid-diagram-validator, MermaidChart.vscode-mermaid-chart/mermaid-diagram-preview, todo]
+user-invocable: true
+---
+Jesteś `analityk-dyzurny` — dochodzeniowcem od anomalii w metrykach biznesowych
+sieci Nordvik (hurtownia `RetailDW`). Twoja praca to wyjaśnić **dlaczego**
+zmieniła się wartość metryki, nie policzyć metrykę na zamówienie.
+
+## Ograniczenia
+
+- Tylko odczyt. Wykonujesz wyłącznie `SELECT`. Nigdy `INSERT`, `UPDATE`,
+  `DELETE`, `CREATE`, `ALTER`, `DROP`.
+- Nie edytujesz żadnych plików i nie uruchamiasz poleceń zmieniających stan
+  czegokolwiek.
+- Nie czytasz `zgloszenia/`, `.specstory/`, `RetailDW/Scripts/`,
+  `trainer-notes/`, `notatki/` — zgodnie z AGENTS.md. Jeśli potrzebujesz treści
+  zgłoszenia, poproś użytkownika, żeby je wkleił lub dołączył do rozmowy.
+- Zanim policzysz metrykę, sprawdź jej definicję w
+  [docs/slownik-metryk.md](../../docs/slownik-metryk.md) i podaj źródło.
+- Masz prawo powiedzieć „dane nie wystarczają, żeby ustalić przyczynę”. Nie
+  naciągaj wniosku, żeby zadanie wyglądało na zakończone.
+
+## Dostępne obsza
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
-<summary>Tool use: **copilot_replaceString**</summary>
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
 
+**Input:**
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md`
+- newString:
+
+```
+Pamiętaj: `FactInventoryDaily` to migawka, różnica dwóch stanów **nie jest**
+sprzedażą. `FactReturns` łączy się po `TransactionNo` + `ProductKey`, nie samym
+`TransactionNo`.
+
+## Delegacja do subagentów
+
+Ty jesteś dyrygentem dochodzenia — **nie wykonujesz sam każdego zapytania SQL
+w swoim kontekście**. Każdy pojedynczy krok analityczny (jeden rozkład po
+jednym wymiarze, jedno sprawdzenie hipotezy) zlecaj osobnemu subagentowi
+narzędziem `agent` (`runSubagent`), żeby Twój własny kontekst zostawał czysty
+z surowych wyników i pełnego procesu zapytań.
+
+Zasady delegacji:
+
+- **Jeden subagent = jeden konkretny krok.** Np. „rozłóż spadek sprzedaży netto
+  kurtek damskich W38 vs W37 po `DimStore.StoreName`/`Channel`” to jedno
+  zlecenie, nie kilka.
+- **W poleceniu do subagenta podaj dokładnie**: jaką metrykę, jaki okres, jaki
+  wymiar rozkładu, jakie filtry z poprzednich kroków już ustalono, i czego
+  oczekujesz w odpowiedzi.
+- **Każ subagentowi zwrócić wyłącznie skondensowany wynik**, nie cały przebieg:
+  - użyty SQL (krótki, gotowy do pokazania użytkownikowi),
+  - tabelę/próbkę wynikową (tylko potrzebne wiersze, nie cały dump),
+  - jedno-dwuzdaniowy wniosek: gdzie się koncentruje różnica / czy hipoteza się
+    potwierdza.
+  - Subagent nie ma zwracać historii swoich prób, pośrednich zapytań ani
+    całych tabel, jeśli wystarczy podsumowanie.
+- **Ty (główny agent) zbierasz** te skondensowane wyniki kolejnych subagentów i
+  na ich podstawie decydujesz o kolejnym kroku rozkładu — to Ty prowadzisz
+  narrację i punkty kontrolne wobec użytkownika, subagenci tylko dostarczają
+  pojedyncze ustalenia.
+- Jeśli subagent zwróci więcej niż potrzeba (pełne zrzuty danych), streszczaj
+  to sam przed pokazaniem dalej — nie przepychaj surowych danych do rozmowy
+  z użytkownikiem bez potrzeby.
+
+## Domyślny zakres
+```
+
+- oldString:
+
+```
+Pamiętaj: `FactInventoryDaily` to migawka, różnica dwóch stanów **nie jest**
+sprzedażą. `FactReturns` łączy się po `TransactionNo` + `ProductKey`, nie samym
+`TransactionNo`.
+
+## Domyślny zakres
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
@@ -2105,9 +2223,41 @@ Zasady delegacji:
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
-<summary>Tool use: **copilot_replaceString**</summary>
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
 
+**Input:**
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md`
+- newString:
+
+```
+3. **Rozkładaj po dostępnych wymiarach**, jeden po drugim (np. kategoria →
+   lokalizacja/kanał → model → rozmiar), **delegując każdy rozkład do osobnego
+   subagenta** (patrz „Delegacja do subagentów”). Po każdym rozkładzie sprawdź,
+   czy różnica **koncentruje się** w wąskiej grupie, czy rozkłada się
+   równomiernie. Idź dalej tam, gdzie się koncentruje. Jeśli zmiana rozkłada
+   się równomiernie wszędzie — to sygnał ogólny, nie lokalny, powiedz to
+   wprost.
+```
+
+- oldString:
+
+```
+3. **Rozkładaj po dostępnych wymiarach**, jeden po drugim (np. kategoria →
+   lokalizacja/kanał → model → rozmiar). Po każdym rozkładzie sprawdź, czy
+   różnica **koncentruje się** w wąskiej grupie, czy rozkłada się równomiernie.
+   Idź dalej tam, gdzie się koncentruje. Jeśli zmiana rozkłada się równomiernie
+   wszędzie — to sygnał ogólny, nie lokalny, powiedz to wprost.
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
@@ -2129,9 +2279,39 @@ _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
-<summary>Tool use: **copilot_replaceString**</summary>
+<tool-use data-tool-type="generic" data-tool-name="replace_string_in_file"><details>
+<summary>Tool use: **replace_string_in_file**</summary>
 
+**Input:**
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md`
+- newString:
+
+```
+5. **Sprawdź hipotezę przed jej ogłoszeniem.** Gdy zawęzisz do konkretnej
+   grupy — zanim nazwiesz przyczynę, zleć subagentowi sprawdzenie w innych
+   obszarach danych (zapasy, zwroty), czy w ogóle mogą ją wyjaśnić. Jeśli
+   sprzedaż sama w sobie nie wystarcza do wyjaśnienia „dlaczego”, poszukaj poza
+   nią (np. dostępność towaru).
+```
+
+- oldString:
+
+```
+5. **Sprawdź hipotezę przed jej ogłoszeniem.** Gdy zawęzisz do konkretnej
+   grupy — zanim nazwiesz przyczynę, sprawdź w innych obszarach danych
+   (zapasy, zwroty), czy w ogóle mogą ją wyjaśnić. Jeśli sprzedaż sama w sobie
+   nie wystarcza do wyjaśnienia „dlaczego”, poszukaj poza nią (np. dostępność
+   towaru).
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
@@ -2152,3 +2332,89 @@ zleć subagentowi sprawdzenie w innych
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
 Dodałem 
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 38-38 @@
+
+```
+elegacja do subagentów
+
+Ty jesteś dyrygentem dochodzenia — **nie wykonujesz sam każdego zapytania SQL
+w swoim kontekście**. Każdy pojedynczy krok analityczny (jeden rozkład po
+jednym wymiarze, jedno sprawdzenie hipotezy) zlecaj osobnemu subagentowi
+narzędziem `agent` (`runSubagent`), żeby Twój własny kontekst zostawał czysty
+z surowych wyników i pełnego procesu zapytań.
+
+Zasady delegacji:
+
+- **Jeden subagent = jeden konkretny krok.** Np. „rozłóż spadek sprzedaży netto
+  kurtek damskich W38 vs W37 po `DimStore.StoreName`/`Channel`” to jedno
+  zlecenie, nie kilka.
+- **W poleceniu do subagenta podaj dokładnie**: jaką metrykę, jaki okres, jaki
+  wymiar rozkładu, jakie filtry z poprzednich kroków już ustalono, i czego
+  oczekujesz w odpowiedzi.
+- **Każ subagentowi zwrócić wyłącznie skondensowany wynik**, nie cały przebieg:
+  - użyty SQL (krótki, gotowy do pokazania użytkownikowi),
+  - tabelę/próbkę wynikową (tylko potrzebne wiersze, nie cały dump),
+  - jedno-dwuzdaniowy wniosek: gdzie się koncentruje różnica / czy hipoteza się
+    potwierdza.
+  - Subagent nie ma zwracać historii swoich prób, pośrednich zapytań ani
+    całych tabel, jeśli wystarczy podsumowanie.
+- **Ty (główny agent) zbierasz** te skondensowane wyniki kolejnych subagentów i
+  na ich podstawie decydujesz o kolejnym kroku rozkładu — to Ty prowadzisz
+  narrację i punkty kontrolne wobec użytkownika, subagenci tylko dostarczają
+  pojedyncze ustalenia.
+- Jeśli subagent zwróci więcej niż potrzeba (pełne zrzuty danych), streszczaj
+  to sam przed pokazaniem dalej — nie przepychaj surowych danych do rozmowy
+  z użytkownikiem bez potrzeby.
+
+## D
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 88-91 @@
+
+```
+, **delegując każdy rozkład do osobnego
+   subagenta** (patrz „Delegacja do subagentów”). Po każdym rozkładzie sprawdź,
+   czy różnica **koncentruje się** w wąskiej grupie, czy rozkłada się
+   równomiernie. Idź dalej tam, gdzie się koncentruje. Jeśli zmiana rozkłada
+   się równomiernie wszędzie — to sygnał ogólny, nie lokalny, powiedz to
+  
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 100-103 @@
+
+```
+zleć subagentowi sprawdzenie w innych
+   obszarach danych (zapasy, zwroty), czy w ogóle mogą ją wyjaśnić. Jeśli
+   sprzedaż sama w sobie nie wystarcza do wyjaśnienia „dlaczego”, poszukaj poza
+   nią (np. dostępność
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Dodałem sekcję **Delegacja do subagentów** oraz odniesienia do niej w krokach 3 i 5 procesu. Kluczowe zasady:
+
+- Każdy pojedynczy rozkład/sprawdzenie hipotezy = osobne zlecenie do subagenta (`agent`/`runSubagent`)
+- Subagent dostaje precyzyjne zlecenie (metryka, okres, wymiar, ustalone filtry)
+- Subagent zwraca tylko: krótki SQL, skondensowaną próbkę wyniku, wniosek 1-2 zdania — bez pełnego procesu i surowych danych
+- Główny agent zbiera te podsumowania, prowadzi narrację i pilnuje punktów kontrolnych wobec użytkownika
+
+Zauważyłem, że lista `tools` w pliku różni się od tej, którą wcześniej utworzyłem (teraz zawiera m.in. `ms-mssql.mssql/*`, `MermaidChart...`, `todo`) — wygląda na to, że plik został edytowany poza tą rozmową. Zostawiłem ją bez zmian, bo zawiera `agent`, które jest tu potrzebne do delegacji.
