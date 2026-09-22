@@ -100,6 +100,7 @@ Jedynym wyjątkiem jest potwierdzenie od użytkownika: jeśli użytkownik sam do
 | NIGDY NIE CZYTAJ PLIKÓW Z **`RetailDW/Scripts/`** | **WDROŻENIE INFRASTRUKTURY.** Skrypty wdrożeniowe, generowanie testowych danych syntetycznych, przygotowanie środowiska lokalnego. Nie opisują biznesowego znaczenia danych. Traktuj tabele `src.*` jak to, co przysłał system źródłowy — NIGDY nie czytaj, skąd się wzięły. |
 | NIGDY NIE CZYTAJ PLIKÓW Z`zgloszenia/` | Przychodzące zgłoszenia biznesowe i materiały robocze analityka. |
 | NIGDY NIE CZYTAJ PLIKÓW Z`trainer-notes/` | Materiały prowadzącego. |
+| NIGDY NIE CZYTAJ PLIKÓW Z`notatki/` | Prywatne notatki użytkownika, poza zakresem analizy. |
 
 Zasady dodatkowe:
 
