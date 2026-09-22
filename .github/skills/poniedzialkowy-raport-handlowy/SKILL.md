@@ -34,10 +34,10 @@ Ta logika jest już zaszyta w skrypcie (sekcja `CALCULATE REPORTING WEEKS`).
 Jeśli użytkownik podał konkretny tydzień (np. `2026-W38`) — użyj go zamiast
 automatycznego wyliczenia.
 
-### 2. Wykonaj zapytanie
+### 2. Wykonaj zapytanie i przejrzyj dane
 
 Uruchom [scripts/generate-report.sql](./scripts/generate-report.sql) przez
-`./scripts/dw.sh sql`:
+`./scripts/dw.sh sql`, żeby **zobaczyć** liczby przed generowaniem plików:
 
 ```bash
 ./scripts/dw.sh sql "$(cat .github/skills/poniedzialkowy-raport-handlowy/scripts/generate-report.sql)"
@@ -47,25 +47,46 @@ Skrypt zwraca 5 sekcji: podsumowanie, zmiana WoW/YoY, top wzrosty, top spadki,
 porównanie kanałów. Źródło danych: `reporting.vw_SalesWeekly` (metryka:
 sprzedaż netto wg [docs/slownik-metryk.md](../../../docs/slownik-metryk.md)).
 
-### 3. Wypełnij szablon
+To jest krok obowiązkowy — nie generuj PDF/Excela, zanim nie przejrzysz tych
+liczb. Insights w kroku 3 muszą wynikać z realnie zobaczonych danych, nie z
+zgadywania.
 
-Przenieś wyniki do [assets/szablon-raportu.md](./assets/szablon-raportu.md).
-Top wzrosty/spadki ogranicz do 3–5 pozycji — to jest wymóg z E06 („nie
-tabele z dwudziestoma wierszami").
+### 3. Napisz Insights & Decyzje
 
-### 4. Dopisz Insights & Decyzje
+To jedyna część, której SQL nie da wprost. Na podstawie danych z kroku 2
+zaproponuj 2–4 punkty interpretacji (sezonowość, znane promocje, nietypowe
+odchylenia, co wymaga decyzji). Nie zgaduj przyczyn, których nie widać w
+danych — jeśli coś wygląda na anomalię wymagającą głębszego wyjaśnienia,
+zasugeruj uruchomienie `analityk-dyzurny` zamiast zmyślać powód.
 
-To jedyna część, której SQL nie da wprost. Zaproponuj interpretację na
-podstawie liczb (sezonowość, znane promocje, nietypowe odchylenia), ale
-**oznacz to jako propozycję do weryfikacji przez człowieka** — szablon już
-zawiera odpowiednie zastrzeżenie. Nie zgaduj przyczyn, których nie widać w
-danych; jeśli coś wygląda na anomalię wymagającą wyjaśnienia, zasugeruj
-uruchomienie `analityk-dyzurny`.
+Zapisz insighty jako plik JSON (dowolna ścieżka, np. `out/insights.json`):
 
-### 5. Sprawdź długość
+```json
+{ "insights": ["Swetry rosną +18% — początek sezonu jesiennego, zgodnie z ubiegłym rokiem.", "Kurtki (STORE) spadły -21,6% — sprawdzić dostępność, możliwy brak towaru."] }
+```
 
-Cały raport ma się mieścić na jednej stronie. Jeśli sekcja Insights robi się
-długa — skracaj, nie dodawaj kolejnych tabel.
+### 4. Wygeneruj PDF i/lub Excel na żądanie
+
+Pierwsze uruchomienie samo instaluje zależności (`npm install`), jeśli
+brakuje `node_modules` w folderze `scripts/` — nie rób tego ręcznie.
+
+```bash
+cd .github/skills/poniedzialkowy-raport-handlowy/scripts
+node generate-report.js --insights out/insights.json          # PDF + Excel (domyślnie)
+node generate-report.js --pdf --insights out/insights.json    # tylko PDF
+node generate-report.js --xlsx                                # tylko Excel, bez insightów
+```
+
+Pliki trafiają do `scripts/out/` (ignorowane przez git). PDF ma stylowane
+tabele (nagłówek, naprzemienne wiersze, kolor zielony/czerwony dla zmian %) i
+sekcję Insights wypełnioną z pliku JSON. Excel ma analogiczne formatowanie w
+osobnych arkuszach + arkusz „Insights".
+
+### 5. Sprawdź długość i treść
+
+PDF ma się mieścić na jednej stronie. Jeśli sekcja Insights robi się długa —
+skracaj, nie dodawaj kolejnych tabel. Zweryfikuj, że insighty w PDF/Excelu
+faktycznie odpowiadają liczbom z kroku 2 (nie są ogólnikowe).
 
 ## Zakresy
 

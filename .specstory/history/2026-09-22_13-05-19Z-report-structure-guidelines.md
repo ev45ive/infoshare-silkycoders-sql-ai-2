@@ -5460,18 +5460,152 @@ dodaj proste stylowanie i formatowanie (tabelka) do pdf oraz do excel
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<think><details><summary>Thought Process</summary>
+Now let's rewrite `buildPdf` with proper styled tables and insights, and `buildExcel` with styling:
+
+Now update `main()` to load insights and pass them through:
+
+Found a bug — after `drawTable`, `doc.x` isn't reset, so the "Insights & Decyzje" section inherits the last table column's x position. Fixing:
+
+Also let's check for the `text` calls after `drawTable` that might inherit width constraints from table cells. Let's re-run and screenshot:
+</details></think>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`
+
+**Input:**
+
+- endLine: `300`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `1`
+
+**Result:**
+
+```
+#!/usr/bin/env node
+/*
+ * Generuje poniedziałkowy przegląd handlowy: PDF (wg szablonu z
+ * ../assets/szablon-raportu.md) i/lub proste zestawienie tabel w Excelu —
+ * na żądanie, przez flagi CLI.
+ *
+ * Dane pobierane z reporting.vw_SalesWeekly przez ./query-data.sql
+ * (6 recordsetów, ta sama logika wyboru tygodnia co w generate-report.sql).
+ *
+ * Pierwsze uruchomienie: skrypt sam wykrywa brak node_modules i uruchamia
+ * `npm install` w tym folderze — nie trzeba nic instalować ręcznie.
+ *
+ * Konfiguracja połączenia — zmienne środowiskowe (domyślne jak w scripts/dw.sh):
+ *   MSSQL_HOST      (domyślnie 127.0.0.1)
+ *   MSSQL_PORT      (domyślnie 14330)
+ *   MSSQL_DATABASE  (domyślnie RetailDW)
+ *   MSSQL_SA_PASSWORD (domyślnie hasło deweloperskie z dw.sh)
+ *   FONT_REGULAR / FONT_BOLD — ścieżki do TTF, jeśli domyślne (Arial) nie istnieją
+ *
+ * Użycie:
+ *   node generate-report.js [--pdf] [--xlsx] [--out <folder>]
+ *   (bez --pdf/--xlsx generowane są oba formaty)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+
+const SCRIPT_DIR = __dirname;
+const QUERY_FILE = path.join(SCRIPT_DIR, 'query-data.sql');
+
+// Wypełniane przez ensureDependencies() po weryfikacji/instalacji node_modules.
+let sql, PDFDocument, ExcelJS;
+
+function ensureDependencies() {
+  const nodeModulesPath = path.join(SCRIPT_DIR, 'node_modules');
+  const required = ['mssql', 'pdfkit', 'exceljs'];
+  const missing = required.some((pkg) => !fs.existsSync(path.join(nodeModulesPath, pkg)));
+
+  if (missing) {
+    console.log('Pierwsze uruchomienie — brak zależności, instaluję (npm install)...');
+    const result = spawnSync('npm', ['install'], { cwd: SCRIPT_DIR, stdio: 'inherit', shell: true });
+    if (result.status !== 0) {
+      throw new Error(`npm install nie powiodło się. Uruchom ręcznie "npm install" w ${SCRIPT_DIR}`);
+    }
+  }
+
+  sql = require('mssql');
+  PDFDocument = require('pdfkit');
+  ExcelJS = 
+… (output truncated)
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
-<summary>Tool use: **copilot_readFile**</summary>
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
 
 Read skill `poniedzialkowy-raport-handlowy`, lines 1 to 80
+
+**Input:**
+
+- endLine: `80`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\SKILL.md`
+- startLine: `1`
+
+**Result:**
+
+````
+---
+name: poniedzialkowy-raport-handlowy
+description: "Generuje cykliczny, jednostronicowy przegląd handlowy za ubiegły tydzień: sprzedaż netto, zmiana WoW/YoY, co urosło/spadło, porównanie kanałów. Użyj gdy: raport poniedziałkowy, przegląd tygodniowy, podsumowanie tygodnia, jak nam poszło w zeszłym tygodniu, co urosło co spadło."
+argument-hint: "opcjonalnie: numer tygodnia ISO (np. 2026-W38), domyślnie ostatni pełny tydzień"
+---
+
+# Skill: poniedzialkowy-raport-handlowy
+
+Generuje cotygodniowy przegląd handlowy dla dyrektora sprzedaży — jedna strona,
+liczby + interpretacja, gotowe na poniedziałek 9:00.
+
+## Kiedy się uruchamia
+
+- Zgłoszenie/prośba o „raport poniedziałkowy", „przegląd tygodniowy", „jak nam
+  poszło w zeszłym tygodniu"
+- Cykliczne uruchomienie na potrzeby stałego podsumowania (patrz
+  [zgloszenia/E06-raport-poniedzialkowy.md](../../../zgloszenia/E06-raport-poniedzialkowy.md))
+
+## Czego NIE obejmuje
+
+- Głębokiej analizy przyczyn anomalii (to robi `analityk-dyzurny`) — ten skill
+  tylko sygnalizuje, co wymaga uwagi
+- Raportów miesięcznych/marżowych (inne widoki, inny odbiorca)
+- Modyfikacji obiektów w hurtowni — baza jest tylko do odczytu
+
+## Procedura
+
+### 1. Ustal tydzień raportowy
+
+Domyślnie: ostatni **pełny** tydzień ISO. Jeśli dziś jest poniedziałek lub
+wtorek, „bieżący" tydzień handlowy jeszcze się nie zamknął — bierz poprzedni.
+Ta logika jest już zaszyta w skrypcie (sekcja `CALCULATE REPORTING WEEKS`).
+
+Jeśli użytkownik podał konkretny tydzień (np. `2026-W38`) — użyj go zamiast
+automatycznego wyliczenia.
+
+### 2. Wykonaj zapytanie
+
+Uruchom [scripts/generate-report.sql](./scripts/generate-report.sql) przez
+`./scripts/dw.sh sql`:
+
+```bash
+./scripts/dw.sh sql "$(cat .github/skills/poniedzialkowy-raport-handlowy/scripts/generate-report.sql)"
+```
+
+Skrypt zwraca 5 sekcji: podsumowanie, zmiana WoW/YoY, top wzrosty, top spadki,
+porównanie kanałów. Źródło danych: `reporting.vw_SalesWeekly` (metryka:
+sprzedaż net
+… (output truncated)
+````
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
@@ -5480,6 +5614,54 @@ _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
 <summary>Tool use: **vscode_askQuestions**</summary>
 
 Analyzing your answers...
+
+**Input:**
+
+- questions:
+
+```
+[
+  {
+    "allowFreeformInput": true,
+    "header": "Format pliku insights",
+    "options": [
+      {
+        "description": "{ \"insights\": [\"tekst 1\", \"tekst 2\"] } — agent tworzy plik, potem uruchamia generate-report.js --insights insights.json",
+        "label": "Plik JSON --insights insights.json",
+        "recommended": true
+      },
+      {
+        "description": "node generate-report.js --insight \"tekst1\" --insight \"tekst2\" (wielokrotna flaga)",
+        "label": "Argument CLI wprost"
+      }
+    ],
+    "question": "Jak agent ma przekazać gotowe insighty do skryptu (po przejrzeniu danych)?"
+  },
+  {
+    "allowFreeformInput": false,
+    "header": "Kolorowanie wartości",
+    "options": [
+      {
+        "description": "Szybciej widoczne na pierwszy rzut oka",
+        "label": "Tak, kolory zielony/czerwony",
+        "recommended": true
+      },
+      {
+        "description": "Bez kolorów, prostszy PDF/Excel czarno-biały",
+        "label": "Nie, tylko znak +/-"
+      }
+    ],
+    "question": "Czy w tabelach PDF/Excel dodatnie/ujemne % mają być kolorowane (zielony/czerwony)?"
+  }
+]
+```
+
+
+**Result:**
+
+```
+{"answers":{"Format pliku insights":{"selected":["Plik JSON --insights insights.json"],"freeText":null,"skipped":false},"Kolorowanie wartości":{"selected":["Tak, kolory zielony/czerwony"],"freeText":null,"skipped":false}}}
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
@@ -5498,4 +5680,918 @@ Insights: sekcja "Insights & Decyzje" w PDF wymaga interpretacji danych
  * Użycie:
  *   node generate-report.js [--pdf] [--xlsx] [--insights <plik.json>
 ```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 59-75 @@
+
+```
+, insightsFile: null };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--out' && argv[i + 1]) {
+      args.out = path.resolve(argv[i + 1]);
+      i++;
+    } else if (argv[i] === '--pdf') {
+      args.pdf = true;
+    } else if (argv[i] === '--xlsx' || argv[i] === '--excel') {
+      args.xlsx = true;
+    } else if (argv[i] === '--insights' && argv[i + 1]) {
+      args.insightsFile = path.resolve(argv[i + 1]);
+      i++;
+    }
+  }
+  // Bez jawnych flag generujemy oba formaty (dotychczasowe zachowanie).
+  if (!args.pdf && !args.xlsx) {
+    args.pdf = true;
+    args.xlsx = true;
+  }
+  return args;
+}
+
+function loadInsights(insightsFile) {
+  if (!insightsFile) return [];
+  const raw = JSON.parse(fs.readFileSync(insightsFile, 'utf8'));
+  if (!Array.isArray(raw.insights)) {
+    throw new Error(`Plik insights musi mieć postać { "insights": ["..."] }: ${insightsFile}`);
+  }
+  return raw.insight
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now let's rewrite  with proper styled tables and insights, and  with styling:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 164-229 @@
+
+```
+const COLOR_HEADER_BG = '#2F5496';
+const COLOR_HEADER_TEXT = '#FFFFFF';
+const COLOR_ROW_ALT = '#F2F2F2';
+const COLOR_POSITIVE = '#1E7B34';
+const COLOR_NEGATIVE = '#B00020';
+const COLOR_BORDER = '#CCCCCC';
+
+function pctColor(value) {
+  if (value === null || value === undefined) return 'black';
+  return Number(value) >= 0 ? COLOR_POSITIVE : COLOR_NEGATIVE;
+}
+
+function buildPdf(data, outPath, fonts, insights) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(outPath);
+    doc.pipe(stream);
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+
+    doc.registerFont('Body', fonts.regular);
+    doc.registerFont('Heading', fonts.bold);
+
+    const pageLeft = doc.page.margins.left;
+    const pageWidth = doc.page.width - pageLeft - doc.page.margins.right;
+
+    // Rysuje tabelę z nagłówkiem, naprzemiennym tłem wierszy i opcjonalnym
+    // kolorowaniem kolumn procentowych (pdfkit nie ma wbudowanych tabel).
+    function drawTable(columns, rows, { colorPctColumn = null } = {}) {
+      const startX = pageLeft;
+      let y = doc.y;
+      const rowHeight = 20;
+      const totalWidth = columns.reduce((s, c) => s + c.width, 0);
+
+      doc.rect(startX, y, totalWidth, rowHeight).fill(COLOR_HEADER_BG);
+      doc.font('Heading').fontSize(9).fillColor(COLOR_HEADER_TEXT);
+      let x = startX;
+      columns.forEach((col) => {
+        doc.text(col.header, x + 4, y + 6, { width: col.width - 8, align: col.align || 'left' });
+        x += col.width;
+      });
+      y += rowHeight;
+
+      doc.font('Body').fontSize(9);
+      rows.forEach((row, idx) => {
+        if (idx % 2 === 1) {
+          doc.rect(startX, y, totalWidth, rowHeight).fill(COLOR_ROW_ALT);
+        }
+        x = startX;
+        columns.forEach((col) => {
+          const value = col.value(row);
+          const isColored = colorPctColumn === col.key;
+          doc.fillColor(isColored ? pctColor(row[col.key]) : 'black');
+          doc.text(value, x + 4, y + 6, { width: col.width - 8, align: col.align || 'left' });
+          x += col.width;
+        });
+        y += rowHeight;
+      });
+
+      doc.rect(startX, doc.y, totalWidth, y - doc.y).strokeColor(COLOR_BORDER).stroke();
+      doc.fillColor('black');
+      doc.y = y + 8;
+    }
+
+    const wow = data.changes.find((c) => c.Label === 'WoW');
+    const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+    doc.font('Heading').fontSize(18).text(`Przegląd handlowy — tydzień ${data.meta.CurrentWeek}`);
+    doc.font('Body').fontSize(10)
+      .text(`Okres: ${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`)
+      .text(`Data raportu: ${new Date().toLocaleString('pl-PL')}`);
+    doc.moveDown();
+
+    doc.font('Heading').fontSize(13).fillColor('black').text('Podsumowanie wykonania');
+    doc.font('Body').fontSize(11).text(
+      `Sprzedaż netto ubiegłego tygodnia wyniosła ${pln(data.summary.NetAmount)}, ` +
+      `co stanowi ${pct(wow && wow.PctChange)} zmianę tygodniowo i ${pct(yoy && yoy.PctChange)} rok do roku. ` +
+      `Liczba transakcji: ${data.summary.Transactions ?? 'b/d'}. Średni koszyk: ${pln(data.summary.AvgBasket)}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    const changeColumns = [
+      { key: 'Category', header: 'Kategoria', width: pageWidth * 0.4, value: (r) => `${r.Category} (${r.Channel})` },
+      { key: 'PctChange', header: 'Zmiana', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.PctChange) },
+    ];
+
+    doc.font('Heading').fontSize(13).text('Co urosło (Top 5)');
+    doc.moveDown(0.3);
+    if (data.growth.length === 0) {
+      doc.font('Body').fontSize(10).text('Brak kategorii ze wzrostem w tym tygodniu.');
+      doc.moveDown();
+    } else {
+      drawTable(changeColumns, data.growth, { colorPctColumn: 'PctChange' });
+    }
+
+    doc.font('Heading').fontSize(13).text('Co spadło (Top 5)');
+    doc.moveDown(0.3);
+    if (data.decline.length === 0) {
+      doc.font('Body').fontSize(10).text('Brak kategorii ze spadkiem w tym tygodniu.');
+      doc.moveDown();
+    } else {
+      drawTable(changeColumns, data.decline, { colorPctColumn: 'PctChange' });
+    }
+
+    doc.font('Heading').fontSize(13).text('Kanały — porównanie');
+    doc.moveDown(0.3);
+    drawTable(
+      [
+        { key: 'Channel', header: 'Kanał', width: pageWidth * 0.25, value: (r) => r.Channel },
+        { key: 'NetAmount', header: 'Sprzedaż netto', width: pageWidth * 0.3, align: 'right', value: (r) => pln(r.NetAmount) },
+        { key: 'WowPct', header: 'WoW', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.WowPct) },
+        { key: 'YoyPct', header: 'YoY', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.YoyPct) },
+      ],
+      data.channels,
+      { colorPctColumn: null }
+    );
+
+    doc.font('Heading').fontSize(13).fillColor('black').text('Insights & Decyzje');
+    doc.moveDown(0.3);
+    if (insights.length === 0) {
+      doc.font('Body').fontSize(9).fillColor('gray').text(
+        'Brak przekazanych insightów — uzupełnij ręcznie na podstawie liczb powyżej ' +
+        '(sezonowość, promocje, dostępność towaru) — patrz SKILL.md, krok 4.',
+        { italic: true }
+      );
+      doc.fillColor('black').moveDown(0.5);
+      doc.font('Body').fontSize(11).text('• ______________________________________________');
+      doc.text('• ______________________________________________');
+      doc.text('• ______________________________________________');
+    } else {
+      doc.font('Body').fontSize(11);
+      insights.forEach((insight) => doc.text(`• ${insight}`));
+    }
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 303-353 @@
+
+```
+const EXCEL_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5496' } };
+const EXCEL_HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' } };
+const EXCEL_ALT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+const EXCEL_POSITIVE_FONT = { color: { argb: 'FF1E7B34' } };
+const EXCEL_NEGATIVE_FONT = { color: { argb: 'FFB00020' } };
+const THIN_BORDER = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+
+function styleHeaderRow(row) {
+  row.eachCell((cell) => {
+    cell.fill = EXCEL_HEADER_FILL;
+    cell.font = EXCEL_HEADER_FONT;
+    cell.alignment = { vertical: 'middle' };
+    cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+  });
+}
+
+function styleDataRow(row, idx) {
+  row.eachCell((cell) => {
+    if (idx % 2 === 1) cell.fill = EXCEL_ALT_FILL;
+    cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+  });
+}
+
+function stylePctCell(cell, value) {
+  if (value === null || value === undefined) return;
+  cell.font = Number(value) >= 0 ? EXCEL_POSITIVE_FONT : EXCEL_NEGATIVE_FONT;
+  cell.numFmt = '+0.0"%";-0.0"%"';
+}
+
+async function buildExcel(data, outPath, insights) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'poniedzialkowy-raport-handlowy';
+  wb.created = new Date();
+
+  const wow = data.changes.find((c) => c.Label === 'WoW');
+  const yoy = data.changes.find((c) => c.Label === 'YoY');
+
+  const summarySheet = wb.addWorksheet('Podsumowanie');
+  summarySheet.columns = [{ width: 28 }, { width: 20 }];
+  const summaryRows = [
+    ['Tydzień', data.meta.CurrentWeek],
+    ['Okres', `${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`],
+    ['Sprzedaż netto (PLN)', Number(data.summary.NetAmount ?? 0)],
+    ['Transakcje', data.summary.Transactions ?? 0],
+    ['Średni koszyk (PLN)', Number(data.summary.AvgBasket ?? 0)],
+    ['Zmiana WoW (%)', wow ? Number(wow.PctChange) : null],
+    ['Zmiana YoY (%)', yoy ? Number(yoy.PctChange) : null],
+  ];
+  summaryRows.forEach(([label, value]) => {
+    const row = summarySheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true };
+    row.getCell(1).border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    row.getCell(2).border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    if (label.includes('%')) stylePctCell(row.getCell(2), value);
+  });
+
+  function addChangeSheet(name, rows) {
+    const sheet = wb.addWorksheet(name);
+    sheet.columns = [
+      { header: 'Kategoria', key: 'Category', width: 20 },
+      { header: 'Kanał', key: 'Channel', width: 12 },
+      { header: 'Zmiana (%)', key: 'PctChange', width: 14 },
+    ];
+    styleHeaderRow(sheet.getRow(1));
+    rows.forEach((r, idx) => {
+      const row = sheet.addRow({ Category: r.Category, Channel: r.Channel, PctChange: Number(r.PctChange) });
+      styleDataRow(row, idx);
+      stylePctCell(row.getCell('PctChange'), r.PctChange);
+    });
+  }
+
+  addChangeSheet('Co urosło', data.growth);
+  addChangeSheet('Co spadło', data.decline);
+
+  const channelSheet = wb.addWorksheet('Kanały');
+  channelSheet.columns = [
+    { header: 'Kanał', key: 'Channel', width: 14 },
+    { header: 'Sprzedaż netto (PLN)', key: 'NetAmount', width: 20 },
+    { header: 'WoW (%)', key: 'WowPct', width: 12 },
+    { header: 'YoY (%)', key: 'YoyPct', width: 12 },
+  ];
+  styleHeaderRow(channelSheet.getRow(1));
+  data.channels.forEach((r, idx) => {
+    const row = channelSheet.addRow({
+      Channel: r.Channel,
+      NetAmount: Number(r.NetAmount),
+      WowPct: r.WowPct !== null ? Number(r.WowPct) : null,
+      YoyPct: r.YoyPct !== null ? Number(r.YoyPct) : null,
+    });
+    styleDataRow(row, idx);
+    stylePctCell(row.getCell('WowPct'), r.WowPct);
+    stylePctCell(row.getCell('YoyPct'), r.YoyPct);
+  });
+
+  const insightsSheet = wb.addWorksheet('Insights');
+  insightsSheet.columns = [{ width: 90 }];
+  if (insights.length === 0) {
+    insightsSheet.addRow(['Brak przekazanych insightów — patrz SKILL.md, krok 4.']).font = { italic: true, color: { argb: 'FF808080' } };
+  } else {
+    insights.forEach((insight) => insightsSheet.addRow([`• ${insight}`]));
+  }
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now update  to load insights and pass them through:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 414-424 @@
+
+```
+  const insights = loadInsights(args.insightsFile);
+
+  if (args.pdf) {
+    const fonts = resolveFonts();
+    const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
+    await buildPdf(data, pdfPath, fonts, insights);
+    console.log(`PDF:   ${pdfPath}`);
+  }
+
+  if (args.xlsx) {
+    const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
+    await buildExcel(data, xlsxPath, insights
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now update SKILL.md to document the new workflow (agent must review data and write insights.json before generating PDF):
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **SKILL.md**</summary>
+
+@@ lines 37-68 @@
+
+````
+ i przejrzyj dane
+
+Uruchom [scripts/generate-report.sql](./scripts/generate-report.sql) przez
+`./scripts/dw.sh sql`, żeby **zobaczyć** liczby przed generowaniem plików:
+
+```bash
+./scripts/dw.sh sql "$(cat .github/skills/poniedzialkowy-raport-handlowy/scripts/generate-report.sql)"
+```
+
+Skrypt zwraca 5 sekcji: podsumowanie, zmiana WoW/YoY, top wzrosty, top spadki,
+porównanie kanałów. Źródło danych: `reporting.vw_SalesWeekly` (metryka:
+sprzedaż netto wg [docs/slownik-metryk.md](../../../docs/slownik-metryk.md)).
+
+To jest krok obowiązkowy — nie generuj PDF/Excela, zanim nie przejrzysz tych
+liczb. Insights w kroku 3 muszą wynikać z realnie zobaczonych danych, nie z
+zgadywania.
+
+### 3. Napisz Insights & Decyzje
+
+To jedyna część, której SQL nie da wprost. Na podstawie danych z kroku 2
+zaproponuj 2–4 punkty interpretacji (sezonowość, znane promocje, nietypowe
+odchylenia, co wymaga decyzji). Nie zgaduj przyczyn, których nie widać w
+danych — jeśli coś wygląda na anomalię wymagającą głębszego wyjaśnienia,
+zasugeruj uruchomienie `analityk-dyzurny` zamiast zmyślać powód.
+
+Zapisz insighty jako plik JSON (dowolna ścieżka, np. `out/insights.json`):
+
+```json
+{ "insights": ["Swetry rosną +18% — początek sezonu jesiennego, zgodnie z ubiegłym rokiem.", "Kurtki (STORE) spadły -21,6% — sprawdzić dostępność, możliwy brak towaru."] }
+```
+
+### 4. Wygeneruj PDF i/lub Excel na żądanie
+
+Pierwsze uruchomienie samo instaluje zależności (`npm install`), jeśli
+brakuje `node_modules` w folderze `scripts/` — nie rób tego ręcznie.
+
+```bash
+cd .github/skills/poniedzialkowy-raport-handlowy/scripts
+node generate-report.js --insights out/insights.json          # PDF + Excel (domyślnie)
+node generate-report.js --pdf --insights out/insights.json    # tylko PDF
+node generate-report.js --xlsx                                # tylko Excel, bez insightów
+```
+
+Pliki trafiają do `scripts/out/` (ignorowane przez git). PDF ma stylowane
+tabele (nagłówek, naprzemienne wiersze, kolor zielony/czerwony dla zmian %) i
+sekcję Insights wypełnioną z pliku JSON. Excel ma analogiczne formatowanie w
+osobnych arkuszach + arkusz „Insights".
+
+### 5. Sprawdź długość i treść
+
+PDF ma się mieścić na jednej stronie. Jeśli sekcja Insights robi się długa —
+skracaj, nie dodawaj kolejnych tabel. Zweryfikuj, że insighty w PDF/Excelu
+faktycznie odpowiadają liczbom z kroku 2 (nie są ogólnikowe)
+````
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Now let's test end-to-end with a sample insights file:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Generate PDF and Excel with a sample insights file to test the new insights integration and styled tables
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf out && mkdir -p out && cat > out/insights.json << 'EOF'
+{
+  "insights": [
+    "Swetry rosna +18,2% (STORE) i +16,4% (ONLINE) - poczatek sezonu jesiennego, zgodnie z trendem z ubieglego roku.",
+    "Kurtki (STORE) spadly -21,6% - warto sprawdzic dostepnosc towaru, mozliwy brak zapasu przed sezonem.",
+    "Kanal ONLINE rosnie szybciej niz STORE (+7,3% vs -6,7% WoW) - obserwowac, czy to trwaly przesuw czy jednorazowy efekt."
+  ]
+}
+EOF
+node generate-report.js --insights out/insights.json
+```
+
+**Result:**
+
+```
+PDF:   C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38.pdf
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="navigate_page"><details>
+<summary>Tool use: **navigate_page**</summary>
+
+Reloaded `Browser`
+
+**Input:**
+
+- pageId: `eed0ae9a-33a3-43d4-a45e-b866054c8428`
+- type: `reload`
+
+**Result:**
+
+```
+Result: {"_type":"Response","_guid":"response@efb516e6fb412f9671faca9377ac372c"}
+URL: file:///C:/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts/out/raport-2026-W38.pdf
+Snapshot: <unchanged>
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="screenshot_page"><details>
+<summary>Tool use: **screenshot_page**</summary>
+
+Captured browser screenshot
+
+**Input:**
+
+- pageId: `eed0ae9a-33a3-43d4-a45e-b866054c8428`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Found a bug — after ,  isn't reset, so the "Insights & Decyzje" section inherits the last table column's x position. Fixing:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **generate-report.js**</summary>
+
+@@ lines 225-225 @@
+
+```
+x = startX;
+      doc.
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file"><details>
+<summary>Tool use: **read_file**</summary>
+
+Read skill `poniedzialkowy-raport-handlowy`: `generate-report.js`, lines 140 to 180
+
+**Input:**
+
+- endLine: `180`
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\generate-report.js`
+- startLine: `140`
+
+**Result:**
+
+```
+      growth,
+      decline,
+      channels,
+    };
+  } finally {
+    await pool.close();
+  }
+}
+
+function pct(value) {
+  if (value === null || value === undefined) return 'b/d';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${Number(value).toFixed(1)}%`;
+}
+
+function pln(value) {
+  if (value === null || value === undefined) return 'b/d';
+  return `${Number(value).toLocaleString('pl-PL', { maximumFractionDigits: 0 })} PLN`;
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('pl-PL');
+}
+
+const COLOR_HEADER_BG = '#2F5496';
+const COLOR_HEADER_TEXT = '#FFFFFF';
+const COLOR_ROW_ALT = '#F2F2F2';
+const COLOR_POSITIVE = '#1E7B34';
+const COLOR_NEGATIVE = '#B00020';
+const COLOR_BORDER = '#CCCCCC';
+
+function pctColor(value) {
+  if (value === null || value === undefined) return 'black';
+  return Number(value) >= 0 ? COLOR_POSITIVE : COLOR_NEGATIVE;
+}
+
+function buildPdf(data, outPath, fonts, insights) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(outPath);
+    doc.pipe(stream);
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Also let's check for the  calls after  that might inherit width constraints from table cells. Let's re-run and screenshot:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Regenerate PDF and Excel after fixing the doc.x cursor bug
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node generate-report.js --insights out/insights.json
+```
+
+**Result:**
+
+```
+PDF:   C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38.pdf
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="navigate_page"><details>
+<summary>Tool use: **navigate_page**</summary>
+
+Reloaded `Browser`
+
+**Input:**
+
+- pageId: `eed0ae9a-33a3-43d4-a45e-b866054c8428`
+- type: `reload`
+
+**Result:**
+
+```
+Result: {"_type":"Response","_guid":"response@a1f8937dc9c32c3cb93601098b2de9de"}
+URL: file:///C:/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts/out/raport-2026-W38.pdf
+Snapshot: <unchanged>
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="screenshot_page"><details>
+<summary>Tool use: **screenshot_page**</summary>
+
+Captured browser screenshot
+
+**Input:**
+
+- pageId: `eed0ae9a-33a3-43d4-a45e-b866054c8428`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Fixed — layout is now correct on one page with styled tables (blue header, alternating rows, green/red % coloring) and the Insights section properly populated. Let's verify the Excel styling too:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Inspect Excel file styling to confirm header fills and percent cell fonts are applied correctly
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node -e "
+const ExcelJS = require('exceljs');
+const wb = new ExcelJS.Workbook();
+wb.xlsx.readFile('out/raport-2026-W38-tabele.xlsx').then(() => {
+  wb.eachSheet(sheet => {
+    console.log('=== ' + sheet.name + ' ===');
+    sheet.eachRow((row, i) => {
+      const cell1 = row.getCell(1);
+      console.log(row.values.slice(1).join(' | '), ' [fill:', cell1.fill ? cell1.fill.fgColor?.argb : 'none', ' font:', JSON.stringify(row.getCell(row.cellCount).font||{}), ']');
+    });
+  });
+});
+"
+```
+
+**Result:**
+
+```
+=== Podsumowanie ===
+Tydzień | 2026-W38  [fill: undefined  font: {"color":{"theme":1},"family":2,"scheme":"minor","size":11,"name":"Calibri"} ]
+Okres | 14.09.2026 – 20.09.2026  [fill: undefined  font: {"color":{"theme":1},"family":2,"scheme":"minor","size":11,"name":"Calibri"} ]
+Sprzedaż netto (PLN) | 664752.03  [fill: undefined  font: {"color":{"theme":1},"family":2,"scheme":"minor","size":11,"name":"Calibri"} ]
+Transakcje | 1451  [fill: undefined  font: {"color":{"theme":1},"family":2,"scheme":"minor","size":11,"name":"Calibri"} ]
+Średni koszyk (PLN) | 458.133721  [fill: undefined  font: {"color":{"theme":1},"family":2,"scheme":"minor","size":11,"name":"Calibri"} ]
+Zmiana WoW (%) | -3.9  [fill: undefined  font: {"color":{"argb":"FFB00020"}} ]
+Zmiana YoY (%) | 4.3  [fill: undefined  font: {"color":{"argb":"FF1E7B34"}} ]
+=== Co urosło ===
+Kategoria | Kanał | Zmiana (%)  [fill: FF2F5496  font: {"bold":true,"color":{"argb":"FFFFFFFF"}} ]
+Swetry | STORE | 18.2  [fill: undefined  font: {"color":{"argb":"FF1E7B34"}} ]
+Kurtki | ONLINE | 13.7  [fill: FFF2F2F2  font: {"color":{"argb":"FF1E7B34"}} ]
+Swetry | ONLINE | 16.4  [fill: undefined  font: {"color":{"argb":"FF1E7B34"}} ]
+Koszule | STORE | 5.5  [fill: FFF2F2F2  font: {"color":{"argb":"FF1E7B34"}} ]
+Koszule | ONLINE | 11.1  [fill: undefined  font: {"color":{"argb":"FF1E7B34"}} ]
+=== Co spadło ===
+Kategoria | Kanał | Zmiana (%)  [fill: FF2F5496  font: {"bold":true,"color":{"argb":"FFFFFFFF"}} ]
+Kurtki | STORE | -21.6  [fill: undefined  font: {"color":{"argb":"FFB00020"}} ]
+Sukienki | STORE | -7.3  [fill: FFF2F2F2  font: {"color":{"argb":"FFB00020"}} ]
+T-shirty | STORE | -7.1  [fill: undefined  font: {"color":{"argb":"FFB00020"}} ]
+Jeansy | ONLINE | -2.7  [fill: FFF2F2F2  font: {"color":{"argb":"FFB00020"}} ]
+=== Kanały ===
+Kanał | Sprzedaż netto (PLN) | WoW (%) | YoY (%)  [fill: FF2F5496  font: {"bold":true,"color":{"argb":"FFFFFFFF"}} ]
+STORE | 515858.96 | -6.7 | 0.9  [fill: undefined  font: {"color":{"argb":"FF1E7B34"}
+… (output truncated)
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Check WoW column font coloring specifically since it contains a negative value for STORE
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node -e "
+const ExcelJS = require('exceljs');
+const wb = new ExcelJS.Workbook();
+wb.xlsx.readFile('out/raport-2026-W38-tabele.xlsx').then(() => {
+  const sheet = wb.getWorksheet('Kanały');
+  sheet.eachRow((row, i) => {
+    console.log('row', i, 'WoW font:', JSON.stringify(row.getCell(3).font||{}), 'YoY font:', JSON.stringify(row.getCell(4).font||{}));
+  });
+});
+"
+```
+
+**Result:**
+
+```
+row 1 WoW font: {"bold":true,"color":{"argb":"FFFFFFFF"}} YoY font: {"bold":true,"color":{"argb":"FFFFFFFF"}}
+row 2 WoW font: {"color":{"argb":"FFB00020"}} YoY font: {"color":{"argb":"FF1E7B34"}}
+row 3 WoW font: {"color":{"argb":"FF1E7B34"}} YoY font: {"color":{"argb":"FF1E7B34"}}
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+All colors correctly reflect sign (STORE WoW -6.7% is red, YoY +0.9% is green; ONLINE both positive are green). Everything verified end-to-end. Cleaning up test artifacts:
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Remove generated test output directory (already gitignored, but clean up local test artifacts)
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && rm -rf out
+```
+
+**Result:**
+
+```
+
+
+Command produced no output
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+## Podsumowanie zmian
+
+**Insights wymagają realnego przeglądu danych:**
+- Krok 2 w `.github/skills/poniedzialkowy-raport-handlowy/SKILL.md` wymaga uruchomienia SQL i przejrzenia liczb **przed** napisaniem insightów
+- Insighty trafiają do pliku  (`{ "insights": ["..."] }`), przekazywanego flagą `--insights`
+- Bez pliku insights PDF/Excel pokazują wyraźny placeholder z przypomnieniem, zamiast pustej sekcji
+
+**Stylowanie PDF:**
+- Własna implementacja tabel w `pdfkit` (nagłówek na niebieskim tle, białą czcionką, naprzemienne szare wiersze, obramowanie)
+- Kolumna „Zmiana %" kolorowana na zielono/czerwono wg znaku
+
+**Stylowanie Excel:**
+- Te same kolory nagłówka i naprzemiennych wierszy co w PDF
+- Format liczbowy `+0.0%;-0.0%` z kolorem czcionki zależnym od znaku
+- Dodatkowy arkusz „Insights"
+
+**Naprawiony bug:** po narysowaniu tabeli w PDF  nie był resetowany do lewego marginesu, przez co sekcja „Insights & Decyzje" renderowała się przesunięta w prawo i ucinała tekst — dodano `doc.x = startX` po każdej tabeli.
+
+Zweryfikowałem end-to-end: SQL → PDF (jedna strona, poprawny layout) → Excel (kolory/fonty sprawdzone programowo).
+
+---
+
+_**User (2026-09-22 13:47:17Z)**_
+
+pokaż mi excel
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Regenerate the Excel report so it can be opened and viewed
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && mkdir -p out && cat > out/insights.json << 'EOF'
+{
+  "insights": [
+    "Swetry rosna +18,2% (STORE) i +16,4% (ONLINE) - poczatek sezonu jesiennego, zgodnie z trendem z ubieglego roku.",
+    "Kurtki (STORE) spadly -21,6% - warto sprawdzic dostepnosc towaru, mozliwy brak zapasu przed sezonem.",
+    "Kanal ONLINE rosnie szybciej niz STORE (+7,3% vs -6,7% WoW) - obserwowac, czy to trwaly przesuw czy jednorazowy efekt."
+  ]
+}
+EOF
+node generate-report.js --xlsx --insights out/insights.json
+```
+
+**Result:**
+
+```
+lkowy-raport-handlowy/scripts && mkdir -p out && cat > out/insights.json << 'EOF'
+{
+  "insights": [
+    "Swetry rosna +18,2% (STORE) i +16,4% (ONLINE) - poczatek sezonu jesiennego, zgodnie z trendem z ubieglego roku.",
+    "Kurtki (STORE) spadly -21,6% - warto sprawdzic dostepnosc towaru, mozliwy brak zapasu przed sezonem.",
+    "Kanal ONLINE rosnie szybciej niz STORE (+7,3% vs -6,7% WoW) - obserwowac, czy to trwaly przesuw czy jednorazowy efekt."
+  ]
+}
+EOF
+node generate-report.js --xlsx --insights out/insights.json
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` where soffice 2>nul; where libreoffice 2>nul; echo done`
+
+Check if LibreOffice is available to convert xlsx to a viewable format
+
+```bash
+where soffice 2>nul; where libreoffice 2>nul; echo done
+```
+
+**Result:**
+
+```
+done
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Generate an HTML preview of the Excel file's sheets with their styling so it can be viewed in the browser
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && node -e "
+const ExcelJS = require('exceljs');
+const wb = new ExcelJS.Workbook();
+wb.xlsx.readFile('out/raport-2026-W38-tabele.xlsx').then(() => {
+  let html = '<html><head><meta charset=\"utf-8\"><style>body{font-family:Calibri,Arial,sans-serif;padding:20px} table{border-collapse:collapse;margin-bottom:30px} td,th{border:1px solid #ccc;padding:6px 10px;font-size:13px} h2{font-family:Calibri,Arial,sans-serif}</style></head><body>';
+  wb.eachSheet(sheet => {
+    html += '<h2>' + sheet.name + '</h2><table>';
+    sheet.eachRow((row) => {
+      html += '<tr>';
+      row.eachCell({includeEmpty:true}, (cell) => {
+        const fill = cell.fill && cell.fill.fgColor ? '#' + cell.fill.fgColor.argb.slice(2) : '';
+        const color = cell.font && cell.font.color ? '#' + cell.font.color.argb.slice(2) : '#000';
+        const bold = cell.font && cell.font.bold ? 'font-weight:bold;' : '';
+        const style = 'background:' + (fill||'#fff') + ';color:' + color + ';' + bold;
+        html += '<td style=\"' + style + '\">' + (cell.value !== null && cell.value !== undefined ? cell.value : '') + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</table>';
+  });
+  html += '</body></html>';
+  require('fs').writeFileSync('out/preview.html', html);
+  console.log('done');
+});
+"
+```
+
+**Result:**
+
+```
+The user cancelled the tool call.
+```
+</details></tool-use>
+
+---
+
+_**User (2026-09-22 13:48:23Z)**_
+
+czy skill ma skrypt node który generuje excel? uruchom i pokaż gdzie jest pli excel
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzi...`
+
+Run the Node.js report generator with --xlsx flag to produce the Excel file and confirm its output path
+
+```bash
+cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2/.github/skills/poniedzialkowy-raport-handlowy/scripts && ls -la out/ 2>/dev/null; node generate-report.js --xlsx
+```
+
+**Result:**
+
+```
+total 17
+drwxr-xr-x 1 teamsharq 197121     0 Sep 22 15:47 ./
+drwxr-xr-x 1 teamsharq 197121     0 Sep 22 15:47 ../
+-rw-r--r-- 1 teamsharq 197121   376 Sep 22 15:47 insights.json
+-rw-r--r-- 1 teamsharq 197121 10267 Sep 22 15:47 raport-2026-W38-tabele.xlsx
+Excel: C:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\skills\poniedzialkowy-raport-handlowy\scripts\out\raport-2026-W38-tabele.xlsx
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+Tak — skill ma skrypt Node.js: `.github/skills/poniedzialkowy-raport-handlowy/scripts/generate-report.js`.
+
+Wygenerowany plik Excel:
+**`raport-2026-W38-tabele.xlsx`**
+
+Zawiera 5 arkuszy: Podsumowanie, Co urosło, Co spadło, Kanały, Insights (ze stylowaniem — nagłówki na niebiesko, naprzemienne wiersze, kolory zielony/czerwony dla zmian %).
+
+---
+
+_**User (2026-09-22 13:51:16Z)**_
+
+commit files as "Raport PDF + Excel"
+
+---
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2 && git status`
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic 2/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="run_in_terminal"><details>
+<summary>Tool use: **run_in_terminal**</summary>
+
+Running ` cd /c/Users/teamsharq/infoshare-silkycoders-sql-ai-2 && cat .gitignore && ec...`
 </details></tool-use>

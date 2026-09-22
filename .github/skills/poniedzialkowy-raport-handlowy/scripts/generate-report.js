@@ -56,7 +56,7 @@ function ensureDependencies() {
 }
 
 function parseArgs(argv) {
-  const args = { out: path.join(SCRIPT_DIR, 'out'), pdf: false, xlsx: false };
+  const args = { out: path.join(SCRIPT_DIR, 'out'), pdf: false, xlsx: false, insightsFile: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--out' && argv[i + 1]) {
       args.out = path.resolve(argv[i + 1]);
@@ -65,6 +65,9 @@ function parseArgs(argv) {
       args.pdf = true;
     } else if (argv[i] === '--xlsx' || argv[i] === '--excel') {
       args.xlsx = true;
+    } else if (argv[i] === '--insights' && argv[i + 1]) {
+      args.insightsFile = path.resolve(argv[i + 1]);
+      i++;
     }
   }
   // Bez jawnych flag generujemy oba formaty (dotychczasowe zachowanie).
@@ -73,6 +76,15 @@ function parseArgs(argv) {
     args.xlsx = true;
   }
   return args;
+}
+
+function loadInsights(insightsFile) {
+  if (!insightsFile) return [];
+  const raw = JSON.parse(fs.readFileSync(insightsFile, 'utf8'));
+  if (!Array.isArray(raw.insights)) {
+    throw new Error(`Plik insights musi mieć postać { "insights": ["..."] }: ${insightsFile}`);
+  }
+  return raw.insights;
 }
 
 function findFont(envVar, candidates) {
@@ -149,7 +161,19 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('pl-PL');
 }
 
-function buildPdf(data, outPath, fonts) {
+const COLOR_HEADER_BG = '#2F5496';
+const COLOR_HEADER_TEXT = '#FFFFFF';
+const COLOR_ROW_ALT = '#F2F2F2';
+const COLOR_POSITIVE = '#1E7B34';
+const COLOR_NEGATIVE = '#B00020';
+const COLOR_BORDER = '#CCCCCC';
+
+function pctColor(value) {
+  if (value === null || value === undefined) return 'black';
+  return Number(value) >= 0 ? COLOR_POSITIVE : COLOR_NEGATIVE;
+}
+
+function buildPdf(data, outPath, fonts, insights) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const stream = fs.createWriteStream(outPath);
@@ -160,6 +184,48 @@ function buildPdf(data, outPath, fonts) {
     doc.registerFont('Body', fonts.regular);
     doc.registerFont('Heading', fonts.bold);
 
+    const pageLeft = doc.page.margins.left;
+    const pageWidth = doc.page.width - pageLeft - doc.page.margins.right;
+
+    // Rysuje tabelę z nagłówkiem, naprzemiennym tłem wierszy i opcjonalnym
+    // kolorowaniem kolumn procentowych (pdfkit nie ma wbudowanych tabel).
+    function drawTable(columns, rows, { colorPctColumn = null } = {}) {
+      const startX = pageLeft;
+      let y = doc.y;
+      const rowHeight = 20;
+      const totalWidth = columns.reduce((s, c) => s + c.width, 0);
+
+      doc.rect(startX, y, totalWidth, rowHeight).fill(COLOR_HEADER_BG);
+      doc.font('Heading').fontSize(9).fillColor(COLOR_HEADER_TEXT);
+      let x = startX;
+      columns.forEach((col) => {
+        doc.text(col.header, x + 4, y + 6, { width: col.width - 8, align: col.align || 'left' });
+        x += col.width;
+      });
+      y += rowHeight;
+
+      doc.font('Body').fontSize(9);
+      rows.forEach((row, idx) => {
+        if (idx % 2 === 1) {
+          doc.rect(startX, y, totalWidth, rowHeight).fill(COLOR_ROW_ALT);
+        }
+        x = startX;
+        columns.forEach((col) => {
+          const value = col.value(row);
+          const isColored = colorPctColumn === col.key;
+          doc.fillColor(isColored ? pctColor(row[col.key]) : 'black');
+          doc.text(value, x + 4, y + 6, { width: col.width - 8, align: col.align || 'left' });
+          x += col.width;
+        });
+        y += rowHeight;
+      });
+
+      doc.rect(startX, doc.y, totalWidth, y - doc.y).strokeColor(COLOR_BORDER).stroke();
+      doc.fillColor('black');
+      doc.x = startX;
+      doc.y = y + 8;
+    }
+
     const wow = data.changes.find((c) => c.Label === 'WoW');
     const yoy = data.changes.find((c) => c.Label === 'YoY');
 
@@ -169,7 +235,7 @@ function buildPdf(data, outPath, fonts) {
       .text(`Data raportu: ${new Date().toLocaleString('pl-PL')}`);
     doc.moveDown();
 
-    doc.font('Heading').fontSize(13).text('Podsumowanie wykonania');
+    doc.font('Heading').fontSize(13).fillColor('black').text('Podsumowanie wykonania');
     doc.font('Body').fontSize(11).text(
       `Sprzedaż netto ubiegłego tygodnia wyniosła ${pln(data.summary.NetAmount)}, ` +
       `co stanowi ${pct(wow && wow.PctChange)} zmianę tygodniowo i ${pct(yoy && yoy.PctChange)} rok do roku. ` +
@@ -178,49 +244,93 @@ function buildPdf(data, outPath, fonts) {
     );
     doc.moveDown();
 
-    function drawTable(title, rows, valueLabel) {
-      doc.font('Heading').fontSize(13).text(title);
-      doc.moveDown(0.3);
-      if (rows.length === 0) {
-        doc.font('Body').fontSize(10).text('Brak pozycji spełniających kryterium w tym tygodniu.');
-      } else {
-        rows.forEach((row) => {
-          doc.font('Body').fontSize(10).text(
-            `${row.Category} (${row.Channel})    ${pct(row.PctChange)}`
-          );
-        });
-      }
+    const changeColumns = [
+      { key: 'Category', header: 'Kategoria', width: pageWidth * 0.4, value: (r) => `${r.Category} (${r.Channel})` },
+      { key: 'PctChange', header: 'Zmiana', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.PctChange) },
+    ];
+
+    doc.font('Heading').fontSize(13).text('Co urosło (Top 5)');
+    doc.moveDown(0.3);
+    if (data.growth.length === 0) {
+      doc.font('Body').fontSize(10).text('Brak kategorii ze wzrostem w tym tygodniu.');
       doc.moveDown();
+    } else {
+      drawTable(changeColumns, data.growth, { colorPctColumn: 'PctChange' });
     }
 
-    drawTable('Co urosło (Top 5)', data.growth);
-    drawTable('Co spadło (Top 5)', data.decline);
+    doc.font('Heading').fontSize(13).text('Co spadło (Top 5)');
+    doc.moveDown(0.3);
+    if (data.decline.length === 0) {
+      doc.font('Body').fontSize(10).text('Brak kategorii ze spadkiem w tym tygodniu.');
+      doc.moveDown();
+    } else {
+      drawTable(changeColumns, data.decline, { colorPctColumn: 'PctChange' });
+    }
 
     doc.font('Heading').fontSize(13).text('Kanały — porównanie');
     doc.moveDown(0.3);
-    data.channels.forEach((row) => {
-      doc.font('Body').fontSize(10).text(
-        `${row.Channel}: ${pln(row.NetAmount)}   WoW ${pct(row.WowPct)}   YoY ${pct(row.YoyPct)}`
-      );
-    });
-    doc.moveDown();
-
-    doc.font('Heading').fontSize(13).text('Insights & Decyzje');
-    doc.font('Body').fontSize(9).fillColor('gray').text(
-      'Sekcja wymaga uzupełnienia przez analityka na podstawie liczb powyżej ' +
-      '(sezonowość, promocje, dostępność towaru) — patrz SKILL.md, krok 4.',
-      { italic: true }
+    drawTable(
+      [
+        { key: 'Channel', header: 'Kanał', width: pageWidth * 0.25, value: (r) => r.Channel },
+        { key: 'NetAmount', header: 'Sprzedaż netto', width: pageWidth * 0.3, align: 'right', value: (r) => pln(r.NetAmount) },
+        { key: 'WowPct', header: 'WoW', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.WowPct) },
+        { key: 'YoyPct', header: 'YoY', width: pageWidth * 0.2, align: 'right', value: (r) => pct(r.YoyPct) },
+      ],
+      data.channels,
+      { colorPctColumn: null }
     );
-    doc.fillColor('black').moveDown(0.5);
-    doc.font('Body').fontSize(11).text('• ______________________________________________');
-    doc.text('• ______________________________________________');
-    doc.text('• ______________________________________________');
+
+    doc.font('Heading').fontSize(13).fillColor('black').text('Insights & Decyzje');
+    doc.moveDown(0.3);
+    if (insights.length === 0) {
+      doc.font('Body').fontSize(9).fillColor('gray').text(
+        'Brak przekazanych insightów — uzupełnij ręcznie na podstawie liczb powyżej ' +
+        '(sezonowość, promocje, dostępność towaru) — patrz SKILL.md, krok 4.',
+        { italic: true }
+      );
+      doc.fillColor('black').moveDown(0.5);
+      doc.font('Body').fontSize(11).text('• ______________________________________________');
+      doc.text('• ______________________________________________');
+      doc.text('• ______________________________________________');
+    } else {
+      doc.font('Body').fontSize(11);
+      insights.forEach((insight) => doc.text(`• ${insight}`));
+    }
 
     doc.end();
   });
 }
 
-async function buildExcel(data, outPath) {
+const EXCEL_HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2F5496' } };
+const EXCEL_HEADER_FONT = { bold: true, color: { argb: 'FFFFFFFF' } };
+const EXCEL_ALT_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+const EXCEL_POSITIVE_FONT = { color: { argb: 'FF1E7B34' } };
+const EXCEL_NEGATIVE_FONT = { color: { argb: 'FFB00020' } };
+const THIN_BORDER = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+
+function styleHeaderRow(row) {
+  row.eachCell((cell) => {
+    cell.fill = EXCEL_HEADER_FILL;
+    cell.font = EXCEL_HEADER_FONT;
+    cell.alignment = { vertical: 'middle' };
+    cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+  });
+}
+
+function styleDataRow(row, idx) {
+  row.eachCell((cell) => {
+    if (idx % 2 === 1) cell.fill = EXCEL_ALT_FILL;
+    cell.border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+  });
+}
+
+function stylePctCell(cell, value) {
+  if (value === null || value === undefined) return;
+  cell.font = Number(value) >= 0 ? EXCEL_POSITIVE_FONT : EXCEL_NEGATIVE_FONT;
+  cell.numFmt = '+0.0"%";-0.0"%"';
+}
+
+async function buildExcel(data, outPath, insights) {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'poniedzialkowy-raport-handlowy';
   wb.created = new Date();
@@ -230,7 +340,7 @@ async function buildExcel(data, outPath) {
 
   const summarySheet = wb.addWorksheet('Podsumowanie');
   summarySheet.columns = [{ width: 28 }, { width: 20 }];
-  summarySheet.addRows([
+  const summaryRows = [
     ['Tydzień', data.meta.CurrentWeek],
     ['Okres', `${fmtDate(data.meta.WeekStart)} – ${fmtDate(data.meta.WeekEnd)}`],
     ['Sprzedaż netto (PLN)', Number(data.summary.NetAmount ?? 0)],
@@ -238,8 +348,14 @@ async function buildExcel(data, outPath) {
     ['Średni koszyk (PLN)', Number(data.summary.AvgBasket ?? 0)],
     ['Zmiana WoW (%)', wow ? Number(wow.PctChange) : null],
     ['Zmiana YoY (%)', yoy ? Number(yoy.PctChange) : null],
-  ]);
-  summarySheet.getColumn(1).font = { bold: true };
+  ];
+  summaryRows.forEach(([label, value]) => {
+    const row = summarySheet.addRow([label, value]);
+    row.getCell(1).font = { bold: true };
+    row.getCell(1).border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    row.getCell(2).border = { top: THIN_BORDER, bottom: THIN_BORDER, left: THIN_BORDER, right: THIN_BORDER };
+    if (label.includes('%')) stylePctCell(row.getCell(2), value);
+  });
 
   function addChangeSheet(name, rows) {
     const sheet = wb.addWorksheet(name);
@@ -248,8 +364,12 @@ async function buildExcel(data, outPath) {
       { header: 'Kanał', key: 'Channel', width: 12 },
       { header: 'Zmiana (%)', key: 'PctChange', width: 14 },
     ];
-    sheet.getRow(1).font = { bold: true };
-    rows.forEach((r) => sheet.addRow({ Category: r.Category, Channel: r.Channel, PctChange: Number(r.PctChange) }));
+    styleHeaderRow(sheet.getRow(1));
+    rows.forEach((r, idx) => {
+      const row = sheet.addRow({ Category: r.Category, Channel: r.Channel, PctChange: Number(r.PctChange) });
+      styleDataRow(row, idx);
+      stylePctCell(row.getCell('PctChange'), r.PctChange);
+    });
   }
 
   addChangeSheet('Co urosło', data.growth);
@@ -262,15 +382,26 @@ async function buildExcel(data, outPath) {
     { header: 'WoW (%)', key: 'WowPct', width: 12 },
     { header: 'YoY (%)', key: 'YoyPct', width: 12 },
   ];
-  channelSheet.getRow(1).font = { bold: true };
-  data.channels.forEach((r) =>
-    channelSheet.addRow({
+  styleHeaderRow(channelSheet.getRow(1));
+  data.channels.forEach((r, idx) => {
+    const row = channelSheet.addRow({
       Channel: r.Channel,
       NetAmount: Number(r.NetAmount),
       WowPct: r.WowPct !== null ? Number(r.WowPct) : null,
       YoyPct: r.YoyPct !== null ? Number(r.YoyPct) : null,
-    })
-  );
+    });
+    styleDataRow(row, idx);
+    stylePctCell(row.getCell('WowPct'), r.WowPct);
+    stylePctCell(row.getCell('YoyPct'), r.YoyPct);
+  });
+
+  const insightsSheet = wb.addWorksheet('Insights');
+  insightsSheet.columns = [{ width: 90 }];
+  if (insights.length === 0) {
+    insightsSheet.addRow(['Brak przekazanych insightów — patrz SKILL.md, krok 4.']).font = { italic: true, color: { argb: 'FF808080' } };
+  } else {
+    insights.forEach((insight) => insightsSheet.addRow([`• ${insight}`]));
+  }
 
   await wb.xlsx.writeFile(outPath);
 }
@@ -281,17 +412,18 @@ async function main() {
   fs.mkdirSync(args.out, { recursive: true });
 
   const data = await fetchData();
+  const insights = loadInsights(args.insightsFile);
 
   if (args.pdf) {
     const fonts = resolveFonts();
     const pdfPath = path.join(args.out, `raport-${data.meta.CurrentWeek}.pdf`);
-    await buildPdf(data, pdfPath, fonts);
+    await buildPdf(data, pdfPath, fonts, insights);
     console.log(`PDF:   ${pdfPath}`);
   }
 
   if (args.xlsx) {
     const xlsxPath = path.join(args.out, `raport-${data.meta.CurrentWeek}-tabele.xlsx`);
-    await buildExcel(data, xlsxPath);
+    await buildExcel(data, xlsxPath, insights);
     console.log(`Excel: ${xlsxPath}`);
   }
 }

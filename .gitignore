@@ -2,5 +2,6 @@
 RetailDW/bin
 RetailDW/obj
 .tessdata/
-.vs/*node_modules/
+.vs/*
+node_modules/
 .github/skills/poniedzialkowy-raport-handlowy/scripts/out/
