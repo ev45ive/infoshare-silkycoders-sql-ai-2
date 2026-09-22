@@ -2028,3 +2028,127 @@ Utworzono `.github/agents/analityk-dyzurny.agent.md` — workspace-owy custom ag
 - Pyta o treść zgłoszenia/zakres na starcie, domyślnie WtoW na sprzedaży netto
 
 Możesz przetestować, wybierając agenta `analityk-dyzurny` w selektorze agentów i puszczając go na tym samym zgłoszeniu o kurtkach — sprawdź, czy faktycznie zatrzymuje się w trzech punktach kontrolnych, a nie przelatuje przez nie.
+
+---
+
+_**User (2026-09-22 12:25:06Z)**_
+
+dodaj do pliku agenta, żeby poszczególne analizy delegował do subagentów aby urzymać czystrzy kontext (tylko próbki, kroki, wnioski itd. bez całego procesu i danych) wracająć do głównego agenta
+
+---
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `analityk-dyzurny.agent.md`, lines 1 to 10
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_readFile"><details>
+<summary>Tool use: **copilot_readFile**</summary>
+
+Read `analityk-dyzurny.agent.md`, lines 1 to 80
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
+<summary>Tool use: **copilot_replaceString**</summary>
+
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 38-38 @@
+
+```
+elegacja do subagentów
+
+Ty jesteś dyrygentem dochodzenia — **nie wykonujesz sam każdego zapytania SQL
+w swoim kontekście**. Każdy pojedynczy krok analityczny (jeden rozkład po
+jednym wymiarze, jedno sprawdzenie hipotezy) zlecaj osobnemu subagentowi
+narzędziem `agent` (`runSubagent`), żeby Twój własny kontekst zostawał czysty
+z surowych wyników i pełnego procesu zapytań.
+
+Zasady delegacji:
+
+- **Jeden subagent = jeden konkretny krok.** Np. „rozłóż spadek sprzedaży netto
+  kurtek damskich W38 vs W37 po `DimStore.StoreName`/`Channel`” to jedno
+  zlecenie, nie kilka.
+- **W poleceniu do subagenta podaj dokładnie**: jaką metrykę, jaki okres, jaki
+  wymiar rozkładu, jakie filtry z poprzednich kroków już ustalono, i czego
+  oczekujesz w odpowiedzi.
+- **Każ subagentowi zwrócić wyłącznie skondensowany wynik**, nie cały przebieg:
+  - użyty SQL (krótki, gotowy do pokazania użytkownikowi),
+  - tabelę/próbkę wynikową (tylko potrzebne wiersze, nie cały dump),
+  - jedno-dwuzdaniowy wniosek: gdzie się koncentruje różnica / czy hipoteza się
+    potwierdza.
+  - Subagent nie ma zwracać historii swoich prób, pośrednich zapytań ani
+    całych tabel, jeśli wystarczy podsumowanie.
+- **Ty (główny agent) zbierasz** te skondensowane wyniki kolejnych subagentów i
+  na ich podstawie decydujesz o kolejnym kroku rozkładu — to Ty prowadzisz
+  narrację i punkty kontrolne wobec użytkownika, subagenci tylko dostarczają
+  pojedyncze ustalenia.
+- Jeśli subagent zwróci więcej niż potrzeba (pełne zrzuty danych), streszczaj
+  to sam przed pokazaniem dalej — nie przepychaj surowych danych do rozmowy
+  z użytkownikiem bez potrzeby.
+
+## D
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
+<summary>Tool use: **copilot_replaceString**</summary>
+
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 88-91 @@
+
+```
+, **delegując każdy rozkład do osobnego
+   subagenta** (patrz „Delegacja do subagentów”). Po każdym rozkładzie sprawdź,
+   czy różnica **koncentruje się** w wąskiej grupie, czy rozkłada się
+   równomiernie. Idź dalej tam, gdzie się koncentruje. Jeśli zmiana rozkłada
+   się równomiernie wszędzie — to sygnał ogólny, nie lokalny, powiedz to
+  
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="copilot_replaceString"><details>
+<summary>Tool use: **copilot_replaceString**</summary>
+
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 100-103 @@
+
+```
+zleć subagentowi sprawdzenie w innych
+   obszarach danych (zapasy, zwroty), czy w ogóle mogą ją wyjaśnić. Jeśli
+   sprzedaż sama w sobie nie wystarcza do wyjaśnienia „dlaczego”, poszukaj poza
+   nią (np. dostępność
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Dodałem 
