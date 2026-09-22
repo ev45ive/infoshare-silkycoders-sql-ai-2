@@ -2,7 +2,6 @@
 name: sql-explorer-subagent
 description: "Use to explore RetailDW schema and run read-only SQL queries, returning condensed results to the calling agent. Use when: rozłóż metrykę po wymiarze, sprawdź zapasy, sprawdź zwroty, sprawdź definicję/strukturę tabeli, wykonaj zapytanie SQL do RetailDW. NOT for writing files, NOT for business narrative — only schema lookup and query execution with a short summary back."
 tools: [read, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query]
-model: "Claude Haiku 4.5"
 user-invocable: false
 disable-model-invocation: false
 agents: []
