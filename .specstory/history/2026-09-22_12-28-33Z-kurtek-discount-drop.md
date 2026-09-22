@@ -2917,14 +2917,88 @@ teraz mozesz
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
+<think><details><summary>Thought Process</summary>
+Teraz zaktualizuję `analityk-dyzurny.agent.md`, żeby wskazywał na nowego subagenta zamiast ogólnego `agent`/`Explore`.
+</details></think>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
 Teraz mam dostęp do narzędzi edycji. Utworzę nowego subagenta i zaktualizuję `analityk-dyzurny`.
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
-<tool-use data-tool-type="generic" data-tool-name="copilot_createFile"><details>
-<summary>Tool use: **copilot_createFile**</summary>
+<tool-use data-tool-type="write" data-tool-name="create_file"><details>
+<summary>Tool use: **create_file**</summary>
 
 Created `sql-explorer-subagent.agent.md`
+
+**Input:**
+
+- content:
+
+```
+---
+name: sql-explorer-subagent
+description: "Use to explore RetailDW schema and run read-only SQL queries, returning condensed results to the calling agent. Use when: rozłóż metrykę po wymiarze, sprawdź zapasy, sprawdź zwroty, sprawdź definicję/strukturę tabeli, wykonaj zapytanie SQL do RetailDW. NOT for writing files, NOT for business narrative — only schema lookup and query execution with a short summary back."
+tools: [read, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query]
+model: "Claude Haiku 4.5 (copilot)"
+user-invocable: false
+disable-model-invocation: false
+agents: []
+---
+Jesteś `sql-explorer-subagent` — wąsko wyspecjalizowany pomocnik od schematu
+i zapytań SQL do hurtowni `RetailDW`. Nie prowadzisz dochodzenia ani narracji
+biznesowej — to robi agent, który Cię wywołał. Twoje zadanie: wykonać
+dokładnie jedno zlecone zapytanie/sprawdzenie i zwrócić skondensowany wynik.
+
+## Ograniczenia
+
+- Tylko odczyt. Wykonujesz wyłącznie `SELECT` (i zapytania do
+  `INFORMATION_SCHEMA` / metadanych). Nigdy `INSERT`, `UPDATE`, `DELETE`,
+  `CREATE`, `ALTER`, `DROP`, `TRUNCATE`.
+- Nie edytujesz żadnych plików, nie uruchamiasz poleceń terminala.
+- Nie czytasz `zgloszenia/`, `.specstory/`, `RetailDW/Scripts/`,
+  `trainer-notes/`, `notatki/`.
+- Jeśli zlecenie wymaga definicji metryki, sprawdź
+  [docs/slownik-metryk.md](../../docs/slownik-metryk.md) i podaj źródło.
+- Nie wywołujesz kolejnych subagentów — realizujesz zlecenie samodzielnie.
+- Jeśli w treści zlecenia brakuje danych do wykonania zapytania (np. nie wiadomo,
+  z którym connectionId się połączyć), połącz się przez `mssql_list_servers` +
+  `mssql_connect` do zapisanego profilu `RetailDW`, zamiast zgadywać dane
+  dostępowe.
+
+## Podejście
+
+1. Jeśli nie masz aktywnego połączenia, połącz się z serwerem `RetailDW`
+   (`mssql_list_servers` → `mssql_connect`).
+2. Jeśli zlecenie wymaga poznania struktury tabeli/kolumn, sprawdź to najpierw
+   krótkim zapytaniem (`SELECT TOP 5 *` albo `INFORMATION_SCHEMA.COLUMNS`) —
+   nie zgaduj nazw kolumn.
+3. Wykonaj dokładnie to zapytanie/rozkład, o które proszono — jeden wymiar,
+   jeden okres, filtry podane w zleceniu. Nie rozszerzaj zakresu samodzielnie.
+4. Jeśli wynik ma wiele wierszy, ogranicz do rozsądnego TOP N i posortuj po
+   metryce istotnej dla zlecenia (np. wielkość zmiany).
+
+## Format odpowiedzi (i tylko to zwracasz)
+
+1. **SQL** — krótki, gotowy do pokazania użytkownikowi.
+2. **Wynik** — zwięzła tabela (tylko potrzebne wiersze, nie cały zrzut).
+3. **Wniosek** — jedno-dwuzdaniowe podsumowanie: gdzie się koncentruje różnica
+   / czy hipoteza się potwierdza / co wynika z danych.
+
+Nie opisuj historii swoich prób, pośrednich zapytań ani całego procesu
+dochodzenia do wyniku — tylko finalny SQL, wynik i wniosek.
+
+```
+
+- filePath: `c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\sql-explorer-subagent.agent.md`
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\sql-explorer-subagent.agent.md
+```
 </details></tool-use>
 
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
@@ -2993,3 +3067,105 @@ dochodzenia do wyniku — tylko finalny SQL, wynik i wniosek.
 _**Agent (anthropic/Anthropic/claude-sonnet-5)**_
 
 Teraz zaktualizuję `analityk-dyzurny.agent.md`, żeby wskazywał na nowego subagenta zamiast ogólnego 
+
+, żeby wskazywał na nowego subagenta zamiast ogólnego `agent`/`Explore`.
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="multi_replace_string_in_file"><details>
+<summary>Tool use: **multi_replace_string_in_file**</summary>
+
+**Input:**
+
+- explanation: `Ogranicz analityk-dyzurny do nowego sql-explorer-subagent i zaktualizuj sekcję delegacji`
+- replacements:
+
+```
+[
+  {
+    "expected_replacements": 1,
+    "filePath": "c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\analityk-dyzurny.agent.md",
+    "newString": "---\ndescription: \"Use when a business metric moved unexpectedly (sales drop, returns spike, margin decline) and you need to find out WHY. Use when: wyjaśnij dlaczego, co się stało ze sprzedażą, anomalia, spadek, wzrost, dlaczego spadła sprzedaż, wykryj anomalię. NOT for computing a single requested metric — that is a plain query, not an investigation.\"\ntools: [read, agent, ms-mssql.mssql/mssql_schema_designer, ms-mssql.mssql/mssql_dab, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query, search, MermaidChart.vscode-mermaid-chart/get_syntax_docs, MermaidChart.vscode-mermaid-chart/mermaid-diagram-validator, MermaidChart.vscode-mermaid-chart/mermaid-diagram-preview, todo]\nagents: [sql-explorer-subagent]\nuser-invocable: true\n---",
+    "oldString": "---\ndescription: \"Use when a business metric moved unexpectedly (sales drop, returns spike, margin decline) and you need to find out WHY. Use when: wyjaśnij dlaczego, co się stało ze sprzedażą, anomalia, spadek, wzrost, dlaczego spadła sprzedaż, wykryj anomalię. NOT for computing a single requested metric — that is a plain query, not an investigation.\"\ntools: [read, agent, ms-mssql.mssql/mssql_schema_designer, ms-mssql.mssql/mssql_dab, ms-mssql.mssql/mssql_connect, ms-mssql.mssql/mssql_disconnect, ms-mssql.mssql/mssql_list_servers, ms-mssql.mssql/mssql_list_databases, ms-mssql.mssql/mssql_get_connection_details, ms-mssql.mssql/mssql_change_database, ms-mssql.mssql/mssql_list_tables, ms-mssql.mssql/mssql_list_schemas, ms-mssql.mssql/mssql_list_views, ms-mssql.mssql/mssql_list_functions, ms-mssql.mssql/mssql_run_query, search, MermaidChart.vscode-mermaid-chart/get_syntax_docs, MermaidChart.vscode-mermaid-chart/mermaid-diagram-validator, MermaidChart.vscode-mermaid-chart/mermaid-diagram-preview, todo]\nuser-invocable: true\n---"
+  },
+  {
+    "expected_replacements": 1,
+    "filePath": "c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\analityk-dyzurny.agent.md",
+    "newString": "## Delegacja do subagentów\n\nTy jesteś dyrygentem dochodzenia — **nie wykonujesz sam każdego zapytania SQL\nw swoim kontekście**. Każdy pojedynczy krok analityczny (jeden rozkład po\njednym wymiarze, jedno sprawdzenie hipotezy) zlecaj subagentowi\n**`sql-explorer-subagent`** (przez narzędzie `agent`/`runSubagent`, podając\njego dokładną nazwę) — nie ogólnemu agentowi eksploracyjnemu bez dostępu do\nbazy. Tylko `sql-explorer-subagent` ma narzędzia MSSQL i wie, jak połączyć się\nz `RetailDW`.\n\nZasady delegacji:",
+    "oldString": "## Delegacja do subagentów\n\nTy jesteś dyrygentem dochodzenia — **nie wykonujesz sam każdego zapytania SQL\nw swoim kontekście**. Każdy pojedynczy krok analityczny (jeden rozkład po\njednym wymiarze, jedno sprawdzenie hipotezy) zlecaj osobnemu subagentowi\nnarzędziem `agent` (`runSubagent`), żeby Twój własny kontekst zostawał czysty\nz surowych wyników i pełnego procesu zapytań.\n\nZasady delegacji:"
+  }
+]
+```
+
+
+**Result:**
+
+```
+The following files were successfully edited:
+c:\Users\teamsharq\infoshare-silkycoders-sql-ai-2\.github\agents\analityk-dyzurny.agent.md
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="write" data-tool-name="textEditGroup"><details>
+<summary>Edit: **analityk-dyzurny.agent.md**</summary>
+
+@@ lines 42-44 @@
+
+```
+subagentowi
+**`sql-explorer-subagent`** (przez narzędzie `agent`/`runSubagent`, podając
+jego dokładną nazwę) — nie ogólnemu agentowi eksploracyjnemu bez dostępu do
+bazy. Tylko `sql-explorer-subagent` ma narzędzia MSSQL i wie, jak połączyć się
+z `RetailDW`
+```
+
+@@ lines 4-4 @@
+
+```
+agents: [sql-explorer-subagent]
+
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+<tool-use data-tool-type="generic" data-tool-name="get_errors"><details>
+<summary>Tool use: **get_errors**</summary>
+
+Checked `analityk-dyzurny.agent.md`, `sql-explorer-subagent.agent.md`, no problems found
+
+**Input:**
+
+- filePaths:
+
+```
+[
+  "c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\analityk-dyzurny.agent.md",
+  "c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\sql-explorer-subagent.agent.md"
+]
+```
+
+
+**Result:**
+
+```
+<errors path="c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\analityk-dyzurny.agent.md">
+No errors found
+</errors>
+<errors path="c:\\Users\\teamsharq\\infoshare-silkycoders-sql-ai-2\\.github\\agents\\sql-explorer-subagent.agent.md">
+No errors found
+</errors>
+```
+</details></tool-use>
+
+_**Agent (anthropic/Anthropic/claude-sonnet-5)**_
+
+Gotowe:
+
+1. **`.github/agents/sql-explorer-subagent.agent.md`** — nowy, lekki subagent (model `Claude Haiku 4.5`), z dostępem tylko do narzędzi MSSQL (bez `mssql_dab`/`schema_designer` — niepotrzebne do eksploracji). Zwraca tylko SQL + wynik + wniosek, zgodnie z formatem oczekiwanym przez `analityk-dyzurny`.
+
+2. **`.github/agents/analityk-dyzurny.agent.md#L3`** — dodałem `agents: [sql-explorer-subagent]`, co ogranicza dostępnych subagentów wyłącznie do niego (uniemożliwia przypadkowe wybranie `Explore`). Zaktualizowałem też sekcję "Delegacja do subagentów", by wprost wskazywała nazwę subagenta.
+
+Od teraz wywołanie `runSubagent` z `analityk-dyzurny` powinno używać `agentName: "sql-explorer-subagent"` zamiast `"Explore"`.
